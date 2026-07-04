@@ -1,8 +1,8 @@
+import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 type ThemeMode = 'light' | 'dark';
 
 const languages = ['English', 'हिंदी', 'मराठी', 'தமிழ்', 'বাংলা'];
@@ -101,19 +101,20 @@ export default function HomeScreen() {
 
           <View style={styles.actions}>
             <Pressable
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.actionButton,
-                { backgroundColor: pressed ? palette.accentPressed : palette.accent },
-              ]}>
-              <SymbolView
-                name={{ ios: 'book', web: 'menu_book' }}
-                size={21}
-                tintColor="#FFFFFF"
-                style={styles.actionIcon}
-              />
-              <Text style={styles.actionText}>Browse Issues</Text>
-            </Pressable>
+  accessibilityRole="button"
+  onPress={() => router.push('/dashboard')}
+  style={({ pressed }) => [
+    styles.actionButton,
+    { backgroundColor: pressed ? palette.accentPressed : palette.accent },
+  ]}>
+  <SymbolView
+    name={{ ios: 'book', web: 'menu_book' }}
+    size={21}
+    tintColor="#FFFFFF"
+    style={styles.actionIcon}
+  />
+  <Text style={styles.actionText}>Browse Issues</Text>
+</Pressable>
 
             <Pressable
               accessibilityRole="button"
