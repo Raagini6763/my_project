@@ -1,98 +1,292 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { SymbolView } from 'expo-symbols';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+type ThemeMode = 'light' | 'dark';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+const languages = ['English', 'हिंदी', 'मराठी', 'தமிழ்', 'বাংলা'];
+
+const palettes = {
+  light: {
+    background: '#FFFEFC',
+    text: '#061325',
+    body: '#31425D',
+    accent: '#087D97',
+    accentPressed: '#06677D',
+    iconPanel: '#E5F0F3',
+    chip: '#F0EDE8',
+    chipText: '#405066',
+    inactiveAction: '#938C8D',
+    divider: '#D9D0C5',
+    modeBg: '#F0EDE8',
+    modeActive: '#FFFFFF',
+  },
+  dark: {
+    background: '#111614',
+    text: '#F7F3EA',
+    body: '#D1D7D3',
+    accent: '#0B839E',
+    accentPressed: '#096D84',
+    iconPanel: '#20343A',
+    chip: '#242B28',
+    chipText: '#D1D7D3',
+    inactiveAction: '#6F6668',
+    divider: '#37332F',
+    modeBg: '#242B28',
+    modeActive: '#33413D',
+  },
+} as const;
 
 export default function HomeScreen() {
+  const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const [themeMode, setThemeMode] = useState<ThemeMode>('light');
+  const palette = palettes[themeMode];
+
   return (
-    <ThemedView style={styles.container}>
+    <View style={[styles.screen, { backgroundColor: palette.background }]}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+        <View style={styles.content}>
+          <View style={[styles.iconPanel, { backgroundColor: palette.iconPanel }]}>
+            <SymbolView
+              name={{ ios: 'megaphone', web: 'campaign' }}
+              size={48}
+              tintColor={palette.accent}
+            />
+          </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+          <View style={styles.copy}>
+            <Text style={[styles.title, { color: palette.text }]}>Impact in Action</Text>
+            <Text style={[styles.subtitle, { color: palette.body }]}>
+              Share stories from your community, turn them into campaigns, and guide people toward
+              action.
+            </Text>
+          </View>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+          <View style={styles.languageWrap}>
+            {languages.map((language) => {
+              const isSelected = language === selectedLanguage;
+              return (
+                <Pressable
+                  key={language}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  onPress={() => setSelectedLanguage(language)}
+                  style={({ pressed }) => [
+                    styles.languageChip,
+                    { backgroundColor: isSelected ? palette.accent : palette.chip },
+                    pressed && styles.pressed,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.languageText,
+                      { color: isSelected ? '#FFFFFF' : palette.chipText },
+                    ]}>
+                    {language}
+                  </Text>
+                </Pressable>
+              );
+            })}
 
-        {Platform.OS === 'web' && <WebBadge />}
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.languageChip,
+                { backgroundColor: palette.chip },
+                pressed && styles.pressed,
+              ]}>
+              <Text style={[styles.moreText, { color: palette.chipText }]}>+ More</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.actions}>
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.actionButton,
+                { backgroundColor: pressed ? palette.accentPressed : palette.accent },
+              ]}>
+              <SymbolView
+                name={{ ios: 'book', web: 'menu_book' }}
+                size={21}
+                tintColor="#FFFFFF"
+                style={styles.actionIcon}
+              />
+              <Text style={styles.actionText}>Browse Issues</Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.actionButton,
+                { backgroundColor: palette.inactiveAction },
+                pressed && styles.pressed,
+              ]}>
+              <SymbolView
+                name={{ ios: 'megaphone', web: 'campaign' }}
+                size={20}
+                tintColor="#FFFFFF"
+                style={styles.actionIcon}
+              />
+              <Text style={styles.actionText}>Learn More</Text>
+            </Pressable>
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: palette.divider }]} />
+
+          <View style={styles.modeWrap}>
+            {(['light', 'dark'] as const).map((mode) => {
+              const isActive = themeMode === mode;
+              return (
+                <Pressable
+                  key={mode}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
+                  onPress={() => setThemeMode(mode)}
+                  style={({ pressed }) => [
+                    styles.modeButton,
+                    { backgroundColor: isActive ? palette.modeActive : palette.modeBg },
+                    pressed && styles.pressed,
+                  ]}>
+                  <SymbolView
+                    name={{
+                      ios: mode === 'light' ? 'sun.max' : 'moon',
+                      web: mode === 'light' ? 'sunny' : 'dark_mode',
+                    }}
+                    size={17}
+                    tintColor={palette.body}
+                  />
+                  <Text style={[styles.modeText, { color: palette.body }]}>
+                    {mode === 'light' ? 'Light' : 'Dark'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
       </SafeAreaView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
   },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
   },
-  heroSection: {
+  content: {
+    width: '100%',
+    maxWidth: 392,
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 17,
+    paddingTop: 49,
+    paddingBottom: 18,
+  },
+  iconPanel: {
+    width: 100,
+    height: 100,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    marginBottom: 31,
+  },
+  copy: {
+    alignItems: 'center',
+    gap: 17,
+    marginBottom: 42,
   },
   title: {
+    fontSize: 30,
+    lineHeight: 36,
+    fontWeight: '800',
     textAlign: 'center',
   },
-  code: {
-    textTransform: 'uppercase',
+  subtitle: {
+    fontSize: 18,
+    lineHeight: 28,
+    fontWeight: '400',
+    textAlign: 'center',
+    maxWidth: 324,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  languageWrap: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    columnGap: 10,
+    rowGap: 11,
+    marginBottom: 51,
+  },
+  languageChip: {
+    minHeight: 34,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  languageText: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
+  moreText: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  actions: {
+    width: '100%',
+    gap: 14,
+    marginBottom: 48,
+  },
+  actionButton: {
+    height: 60,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  actionIcon: {
+    width: 22,
+    height: 22,
+  },
+  actionText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: '800',
+  },
+  divider: {
+    width: '100%',
+    height: StyleSheet.hairlineWidth,
+    marginBottom: 31,
+  },
+  modeWrap: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  modeButton: {
+    minHeight: 34,
+    minWidth: 90,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  modeText: {
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
+  pressed: {
+    opacity: 0.78,
   },
 });
