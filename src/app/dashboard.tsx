@@ -1,7 +1,7 @@
 // app/dashboard.tsx
-import { SymbolView } from 'expo-symbols';
+import { SymbolView } from '@/components/symbol-view';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type ThemeMode = 'light' | 'dark';
@@ -494,5 +494,3 @@ const styles = StyleSheet.create({
   },
 });
 
-// Add ScrollView import for the category filter
-import { ScrollView } from 'react-native';
