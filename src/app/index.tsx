@@ -1,11 +1,14 @@
-import { router } from 'expo-router';
 import { SymbolView } from '@/components/symbol-view';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 type ThemeMode = 'light' | 'dark';
 
+
 const languages = ['English', 'हिंदी', 'मराठी', 'தமிழ்', 'বাংলা'];
+
 
 const palettes = {
   light: {
@@ -20,7 +23,6 @@ const palettes = {
     inactiveAction: '#938C8D',
     divider: '#D9D0C5',
     modeBg: '#F0EDE8',
-    modeActive: '#FFFFFF',
   },
   dark: {
     background: '#111614',
@@ -34,14 +36,15 @@ const palettes = {
     inactiveAction: '#6F6668',
     divider: '#37332F',
     modeBg: '#242B28',
-    modeActive: '#33413D',
   },
 } as const;
+
 
 export default function HomeScreen() {
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
   const palette = palettes[themeMode];
+
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.background }]}>
@@ -55,6 +58,7 @@ export default function HomeScreen() {
             />
           </View>
 
+
           <View style={styles.copy}>
             <Text style={[styles.title, { color: palette.text }]}>Impact in Action</Text>
             <Text style={[styles.subtitle, { color: palette.body }]}>
@@ -62,6 +66,7 @@ export default function HomeScreen() {
               action.
             </Text>
           </View>
+
 
           <View style={styles.languageWrap}>
             {languages.map((language) => {
@@ -88,6 +93,7 @@ export default function HomeScreen() {
               );
             })}
 
+
             <Pressable
               accessibilityRole="button"
               style={({ pressed }) => [
@@ -98,6 +104,7 @@ export default function HomeScreen() {
               <Text style={[styles.moreText, { color: palette.chipText }]}>+ More</Text>
             </Pressable>
           </View>
+
 
           <View style={styles.actions}>
             <Pressable
@@ -116,6 +123,7 @@ export default function HomeScreen() {
   <Text style={styles.actionText}>Browse Issues</Text>
 </Pressable>
 
+
             <Pressable
               accessibilityRole="button"
               style={({ pressed }) => [
@@ -133,7 +141,9 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
+
           <View style={[styles.divider, { backgroundColor: palette.divider }]} />
+
 
           <View style={styles.modeWrap}>
             {(['light', 'dark'] as const).map((mode) => {
@@ -146,18 +156,19 @@ export default function HomeScreen() {
                   onPress={() => setThemeMode(mode)}
                   style={({ pressed }) => [
                     styles.modeButton,
-                    { backgroundColor: isActive ? palette.modeActive : palette.modeBg },
+                    { backgroundColor: isActive ? palette.accent : palette.modeBg },
                     pressed && styles.pressed,
                   ]}>
-                  <SymbolView
-                    name={{
-                      ios: mode === 'light' ? 'sun.max' : 'moon',
-                      web: mode === 'light' ? 'sunny' : 'dark_mode',
-                    }}
+                  <MaterialIcons
+                    name={mode === 'light' ? 'light-mode' : 'dark-mode'}
                     size={17}
-                    tintColor={palette.body}
+                    color={isActive ? '#FFFFFF' : palette.body}
                   />
-                  <Text style={[styles.modeText, { color: palette.body }]}>
+                  <Text
+                    style={[
+                      styles.modeText,
+                      { color: isActive ? '#FFFFFF' : palette.body },
+                    ]}>
                     {mode === 'light' ? 'Light' : 'Dark'}
                   </Text>
                 </Pressable>
@@ -169,6 +180,7 @@ export default function HomeScreen() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   screen: {
@@ -291,3 +303,6 @@ const styles = StyleSheet.create({
     opacity: 0.78,
   },
 });
+
+
+

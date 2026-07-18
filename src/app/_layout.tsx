@@ -17,6 +17,11 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="dashboard" />
         <Stack.Screen name="explore" />
+        <Stack.Screen name="stories" />
+        <Stack.Screen name="upload" />
+        <Stack.Screen name="campaigns" />
+        <Stack.Screen name="action" />
+        <Stack.Screen name="about" />
       </Stack>
     </ThemeProvider>
   );

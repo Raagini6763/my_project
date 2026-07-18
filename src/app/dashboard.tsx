@@ -1,4 +1,5 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { router, usePathname } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -69,16 +70,43 @@ const actions = [
   },
 ];
 
-const navigation = [
-  { label: 'Home', icon: 'home' as const, active: true },
-  { label: 'Stories', icon: 'menu-book' as const },
-  { label: 'Upload', icon: 'ios-share' as const },
-  { label: 'Campaigns', icon: 'campaign' as const },
-  { label: 'Action', icon: 'bolt' as const },
+const getNavigationItems = (pathname: string) => [
+  {
+    label: 'Home',
+    icon: 'home' as const,
+    route: '/',
+    active: pathname === '/' || pathname === '/dashboard',
+  },
+  {
+    label: 'Stories',
+    icon: 'menu-book' as const,
+    route: '/stories',
+    active: pathname === '/stories',
+  },
+  {
+    label: 'Upload',
+    icon: 'ios-share' as const,
+    route: '/upload',
+    active: pathname === '/upload',
+  },
+  {
+    label: 'Campaigns',
+    icon: 'campaign' as const,
+    route: '/campaigns',
+    active: pathname === '/campaigns',
+  },
+  {
+    label: 'Action',
+    icon: 'bolt' as const,
+    route: '/action',
+    active: pathname === '/action',
+  },
 ];
 
 export default function DashboardScreen() {
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
+  const pathname = usePathname();
+  const navigation = getNavigationItems(pathname);
   const [searchQuery, setSearchQuery] = useState('');
   const palette = themes[themeMode];
   const filteredStories = stories.filter((story) => {
@@ -129,9 +157,31 @@ export default function DashboardScreen() {
             {actions.map((action) => (
               <Pressable
                 key={action.label}
+                onPress={() => {
+                  switch (action.label) {
+                    case "Browse\napproved stories":
+                      router.push("/stories");
+                      break;
+
+                    case "Build an\nawareness\ncampaign":
+                      router.push("/campaigns");
+                      break;
+
+                    case "Get action steps":
+                      router.push("/action");
+                      break;
+
+                    case "About Us":
+                      router.push("/about");
+                      break;
+                  }
+                }}
                 style={({ pressed }) => [
                   styles.actionCard,
-                  { backgroundColor: palette.surface, borderColor: palette.border },
+                  {
+                    backgroundColor: palette.surface,
+                    borderColor: palette.border,
+                  },
                   pressed && styles.pressed,
                 ]}>
                 <View style={[styles.actionIcon, { backgroundColor: action.iconBackground }]}>
@@ -144,7 +194,9 @@ export default function DashboardScreen() {
 
           <View style={styles.impactHeader}>
             <Text style={[styles.impactTitle, { color: palette.text }]}>Impact in Action</Text>
-            <Pressable hitSlop={10}>
+            <Pressable
+              hitSlop={10}
+              onPress={() => router.push("/stories")}>
               <Text style={[styles.seeAll, { color: palette.accent }]}>See all</Text>
             </Pressable>
           </View>
@@ -153,6 +205,7 @@ export default function DashboardScreen() {
             {filteredStories.map((story) => (
               <Pressable
                 key={story.id}
+                onPress={() => router.push("/stories")}
                 style={({ pressed }) => [
                   styles.storyCard,
                   { backgroundColor: palette.surface, borderColor: palette.border },
@@ -177,13 +230,40 @@ export default function DashboardScreen() {
           </View>
         </ScrollView>
 
-        <View style={[styles.bottomNav, { backgroundColor: palette.nav, borderColor: palette.border }]}>
+        <View
+          style={[
+            styles.bottomNav,
+            {
+              backgroundColor: palette.nav,
+              borderColor: palette.border,
+            },
+          ]}>
           {navigation.map((item) => {
-            const color = item.active ? palette.accent : palette.body;
+            const color = item.active
+              ? palette.accent
+              : palette.body;
+
             return (
-              <Pressable key={item.label} style={styles.navItem}>
-                <MaterialIcons name={item.icon} size={25} color={color} />
-                <Text style={[styles.navLabel, { color }]}>{item.label}</Text>
+              <Pressable
+                key={item.label}
+                style={styles.navItem}
+                onPress={() => router.push(item.route as any)}
+              >
+                <MaterialIcons
+                  name={item.icon}
+                  size={25}
+                  color={color}
+                />
+
+                <Text
+                  style={[
+                    styles.navLabel,
+                    {
+                      color,
+                    },
+                  ]}>
+                  {item.label}
+                </Text>
               </Pressable>
             );
           })}
