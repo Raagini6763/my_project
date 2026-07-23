@@ -6,9 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 type ThemeMode = 'light' | 'dark';
 
-
 const languages = ['English', 'हिंदी', 'मराठी', 'தமிழ்', 'বাংলা'];
-
 
 const palettes = {
   light: {
@@ -39,12 +37,10 @@ const palettes = {
   },
 } as const;
 
-
 export default function HomeScreen() {
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
   const palette = palettes[themeMode];
-
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.background }]}>
@@ -58,7 +54,6 @@ export default function HomeScreen() {
             />
           </View>
 
-
           <View style={styles.copy}>
             <Text style={[styles.title, { color: palette.text }]}>Impact in Action</Text>
             <Text style={[styles.subtitle, { color: palette.body }]}>
@@ -66,7 +61,6 @@ export default function HomeScreen() {
               action.
             </Text>
           </View>
-
 
           <View style={styles.languageWrap}>
             {languages.map((language) => {
@@ -93,7 +87,6 @@ export default function HomeScreen() {
               );
             })}
 
-
             <Pressable
               accessibilityRole="button"
               style={({ pressed }) => [
@@ -105,45 +98,37 @@ export default function HomeScreen() {
             </Pressable>
           </View>
 
-
           <View style={styles.actions}>
             <Pressable
-  accessibilityRole="button"
-  onPress={() => router.push('/dashboard')}
-  style={({ pressed }) => [
-    styles.actionButton,
-    { backgroundColor: pressed ? palette.accentPressed : palette.accent },
-  ]}>
-  <SymbolView
-    name={{ ios: 'book', web: 'menu_book' }}
-    size={21}
-    tintColor="#FFFFFF"
-    style={styles.actionIcon}
-  />
-  <Text style={styles.actionText}>Browse Issues</Text>
-</Pressable>
-
-
-            <Pressable
               accessibilityRole="button"
+              onPress={() => router.push('/dashboard')}
               style={({ pressed }) => [
                 styles.actionButton,
-                { backgroundColor: palette.inactiveAction },
-                pressed && styles.pressed,
+                { backgroundColor: pressed ? palette.accentPressed : palette.accent },
               ]}>
               <SymbolView
-                name={{ ios: 'megaphone', web: 'campaign' }}
-                size={20}
+                name={{ ios: 'book', web: 'menu_book' }}
+                size={21}
                 tintColor="#FFFFFF"
                 style={styles.actionIcon}
               />
-              <Text style={styles.actionText}>Learn More</Text>
+              <Text style={styles.actionText}>Browse Issues</Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/login')}
+              style={({ pressed }) => [
+                styles.actionButton,
+                { backgroundColor: pressed ? '#06677D' : '#087D97' },
+                pressed && styles.pressed,
+              ]}>
+              <MaterialIcons name="admin-panel-settings" size={21} color="#FFFFFF" />
+              <Text style={styles.actionText}>Admin Login</Text>
             </Pressable>
           </View>
 
-
           <View style={[styles.divider, { backgroundColor: palette.divider }]} />
-
 
           <View style={styles.modeWrap}>
             {(['light', 'dark'] as const).map((mode) => {
@@ -180,7 +165,6 @@ export default function HomeScreen() {
     </View>
   );
 }
-
 
 const styles = StyleSheet.create({
   screen: {
@@ -303,6 +287,3 @@ const styles = StyleSheet.create({
     opacity: 0.78,
   },
 });
-
-
-

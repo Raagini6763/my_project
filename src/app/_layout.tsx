@@ -15,7 +15,10 @@ export default function RootLayout() {
       <AnimatedSplashOverlay />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="register" />
         <Stack.Screen name="dashboard" />
+        <Stack.Screen name="dashboard_admin" />
         <Stack.Screen name="explore" />
         <Stack.Screen name="stories" />
         <Stack.Screen name="upload" />

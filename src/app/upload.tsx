@@ -13,7 +13,7 @@ import {
     StyleSheet,
     Text,
     TextInput,
-    View
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -35,6 +35,7 @@ export default function UploadScreen() {
   const [howHelp, setHowHelp] = useState("");
   const [location, setLocation] = useState("");
   const [category, setCategory] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recording, setRecording] = useState<any>(null);
   const [sound, setSound] = useState<any>(null);
@@ -42,6 +43,8 @@ export default function UploadScreen() {
   const [noteContent, setNoteContent] = useState("");
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [currentField, setCurrentField] = useState("");
+  const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+  const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
 
   const pathname = usePathname();
   const navigation = getNavigationItems(pathname);
@@ -54,8 +57,13 @@ export default function UploadScreen() {
   ];
 
   const categories = [
-    "Safety", "Education", "Water", "Healthcare", 
-    "Infrastructure", "Environment", "Sanitation", "Other"
+    "Safety", 
+    "Education", 
+    "Water", 
+    "Healthcare", 
+    "Infrastructure", 
+    "Environment", 
+    "Sanitation", 
   ];
 
   const handleFormatSelect = async (formatId: string) => {
@@ -183,6 +191,28 @@ export default function UploadScreen() {
     setIsNoteModalVisible(false);
   };
 
+  const handleCategorySelect = (selectedCategory: string) => {
+    if (selectedCategory === "Other") {
+      setShowCustomCategoryInput(true);
+      setCategory(""); // Clear the category when "Other" is selected
+    } else {
+      setCategory(selectedCategory);
+      setCustomCategory("");
+      setShowCustomCategoryInput(false);
+      setIsCategoryModalVisible(false);
+    }
+  };
+
+  const saveCustomCategory = () => {
+    if (customCategory.trim()) {
+      setCategory(customCategory.trim());
+      setShowCustomCategoryInput(false);
+      setIsCategoryModalVisible(false);
+    } else {
+      Alert.alert("Error", "Please enter a category name.");
+    }
+  };
+
   const renderStep1 = () => (
     <View>
       <Text style={styles.subheading}>Choose your format and answer the guided questions</Text>
@@ -259,7 +289,7 @@ export default function UploadScreen() {
       <Pressable 
         style={styles.questionCard}
         onPress={() => handleQuestionPress(
-          "What happened?",
+          "1. What happened?",
           "whatHappened",
           "Describe the issue or event clearly..."
         )}
@@ -274,7 +304,7 @@ export default function UploadScreen() {
       <Pressable 
         style={styles.questionCard}
         onPress={() => handleQuestionPress(
-          "Why does this matter to you?",
+          "2. Why does this matter to you?",
           "whyMatters",
           "Explain the impact on your community..."
         )}
@@ -289,7 +319,7 @@ export default function UploadScreen() {
       <Pressable 
         style={styles.questionCard}
         onPress={() => handleQuestionPress(
-          "What change do you want?",
+          "3. What change do you want?",
           "whatChange",
           "What should happen to fix this?..."
         )}
@@ -304,7 +334,7 @@ export default function UploadScreen() {
       <Pressable 
         style={styles.questionCard}
         onPress={() => handleQuestionPress(
-          "How can others help?",
+          "4. How can others help?",
           "howHelp",
           "What actions can people take?..."
         )}
@@ -319,12 +349,12 @@ export default function UploadScreen() {
       <Pressable 
         style={styles.questionCard}
         onPress={() => handleQuestionPress(
-          "Where is this happening?",
+          "5. Where is this happening?",
           "location",
           "Village, district, state..."
         )}
       >
-        <Text style={styles.questionLabel}>📍 Where is this happening?</Text>
+        <Text style={styles.questionLabel}>5. Where is this happening?</Text>
         <Text style={[styles.questionAnswer, location && { color: '#333' }]}>
           {location || "Village, district, state..."}
         </Text>
@@ -333,17 +363,13 @@ export default function UploadScreen() {
 
       <Pressable 
         style={styles.questionCard}
-        onPress={() => handleQuestionPress(
-          "Category",
-          "category",
-          "Safety, Education, Water, etc."
-        )}
+        onPress={() => setIsCategoryModalVisible(true)}
       >
-        <Text style={styles.questionLabel}>🏷️ Category</Text>
+        <Text style={styles.questionLabel}>6. Category</Text>
         <Text style={[styles.questionAnswer, category && { color: '#333' }]}>
-          {category || "Safety, Education, Water, etc."}
+          {category || "Select a category..."}
         </Text>
-        <MaterialIcons name="edit" size={20} color="#087D97" />
+        <MaterialIcons name="chevron-right" size={20} color="#087D97" />
       </Pressable>
 
       <View style={styles.stepButtons}>
@@ -357,6 +383,10 @@ export default function UploadScreen() {
         <Pressable 
           style={[styles.button, styles.publishButton]}
           onPress={() => {
+            if (!category) {
+              Alert.alert("Incomplete", "Please select a category.");
+              return;
+            }
             Alert.alert(
               "Success!",
               "Your story has been published! 🎉",
@@ -459,6 +489,97 @@ export default function UploadScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Category Selection Modal */}
+      <Modal
+        visible={isCategoryModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setIsCategoryModalVisible(false);
+          setShowCustomCategoryInput(false);
+          setCustomCategory("");
+        }}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Category</Text>
+              <Pressable onPress={() => {
+                setIsCategoryModalVisible(false);
+                setShowCustomCategoryInput(false);
+                setCustomCategory("");
+              }}>
+                <MaterialIcons name="close" size={24} color="#333" />
+              </Pressable>
+            </View>
+
+            {!showCustomCategoryInput ? (
+              <ScrollView>
+                {categories.map((cat) => (
+                  <Pressable
+                    key={cat}
+                    style={[
+                      styles.categoryOption,
+                      category === cat && styles.categoryOptionActive,
+                    ]}
+                    onPress={() => handleCategorySelect(cat)}
+                  >
+                    <Text style={[
+                      styles.categoryOptionText,
+                      category === cat && styles.categoryOptionTextActive,
+                    ]}>
+                      {cat}
+                    </Text>
+                    {category === cat && (
+                      <MaterialIcons name="check" size={20} color="#087D97" />
+                    )}
+                  </Pressable>
+                ))}
+                <Pressable
+                  style={[
+                    styles.categoryOption,
+                    styles.otherOption,
+                  ]}
+                  onPress={() => handleCategorySelect("Other")}
+                >
+                  <Text style={styles.categoryOptionText}>Other</Text>
+                  <MaterialIcons name="chevron-right" size={20} color="#087D97" />
+                </Pressable>
+              </ScrollView>
+            ) : (
+              <View>
+                <Text style={styles.customCategoryLabel}>Please specify the category:</Text>
+                <TextInput
+                  style={styles.customCategoryInput}
+                  placeholder="Enter category name..."
+                  placeholderTextColor="#999"
+                  value={customCategory}
+                  onChangeText={setCustomCategory}
+                  autoFocus
+                />
+                <View style={styles.modalButtons}>
+                  <Pressable 
+                    style={[styles.modalButton, styles.modalCancelButton]}
+                    onPress={() => {
+                      setShowCustomCategoryInput(false);
+                      setCustomCategory("");
+                    }}
+                  >
+                    <Text style={styles.modalCancelText}>Back</Text>
+                  </Pressable>
+                  <Pressable 
+                    style={[styles.modalButton, styles.modalSaveButton]}
+                    onPress={saveCustomCategory}
+                  >
+                    <Text style={styles.modalSaveText}>Save</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
       </Modal>
     </View>
   );
@@ -686,5 +807,46 @@ const styles = StyleSheet.create({
     color: "#FFF",
     fontSize: 16,
     fontWeight: "700",
+  },
+  categoryOption: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0EDE8",
+  },
+  categoryOptionActive: {
+    backgroundColor: "#F0F9FC",
+  },
+  categoryOptionText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  categoryOptionTextActive: {
+    color: "#087D97",
+    fontWeight: "600",
+  },
+  otherOption: {
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#E7DDD2",
+  },
+  customCategoryLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1D2530",
+    marginBottom: 12,
+  },
+  customCategoryInput: {
+    borderWidth: 1,
+    borderColor: "#E7DDD2",
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 16,
+    color: "#333",
+    backgroundColor: "#FFF",
+    marginBottom: 16,
   },
 });
