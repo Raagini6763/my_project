@@ -1,6 +1,7 @@
+import { fetchApprovedStories } from '@/services/firebaseService';
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, usePathname } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     Alert,
     Pressable,
@@ -78,8 +79,20 @@ const getNavigationItems = (pathname: string) => [
 export default function StoriesScreen() {
   const [selectedFilter, setSelectedFilter] = useState("Podcast");
   const [stories, setStories] = useState(initialStories);
+  const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
   const navigation = getNavigationItems(pathname);
+
+  useEffect(() => {
+    const loadStories = async () => {
+      setIsLoading(true);
+      const approvedStories = await fetchApprovedStories();
+      setStories(approvedStories);
+      setIsLoading(false);
+    };
+
+    loadStories();
+  }, []);
 
   const filteredStories = stories.filter((story) =>
     selectedFilter === ""
@@ -184,7 +197,7 @@ export default function StoriesScreen() {
           <Text style={styles.heading}>Browse Stories</Text>
 
           <Text style={styles.subheading}>
-            Stories by media type
+            {isLoading ? 'Loading approved stories...' : 'Stories by media type'}
           </Text>
 
           {/* FILTERS */}
@@ -222,7 +235,9 @@ export default function StoriesScreen() {
           {/* STORIES */}
 
           <View style={{ marginTop: 22 }}>
-            {filteredStories.map((story) => (
+            {filteredStories.length === 0 ? (
+              <Text style={styles.emptyState}>No approved stories yet.</Text>
+            ) : filteredStories.map((story) => (
               <View key={story.id} style={styles.card}>
                 {/* Title Row */}
                 <View style={styles.titleRow}>
@@ -418,6 +433,12 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 17,
     color: "#666",
+  },
+  emptyState: {
+    marginTop: 24,
+    textAlign: "center",
+    color: "#666",
+    fontSize: 16,
   },
 
   filter: {

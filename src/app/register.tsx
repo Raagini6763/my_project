@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+
 export default function RegisterScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -13,41 +14,35 @@ export default function RegisterScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+
   const handleRegister = () => {
     if (!fullName || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
+
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
       return;
     }
+
 
     if (password.length < 6) {
       Alert.alert('Error', 'Password must be at least 6 characters');
       return;
     }
 
+
     setIsLoading(true);
     // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
-      Alert.alert(
-        'Success',
-        'Registration successful! Welcome to the admin dashboard.',
-        [
-          {
-            text: 'Go to Dashboard',
-            onPress: () => {
-              // Reset navigation stack and go to dashboard_admin
-              router.replace('/dashboard_admin');
-            },
-          },
-        ]
-      );
+      // Replace the current screen so the back button does not return to registration.
+      router.replace('/dashboard_admin');
     }, 1500);
   };
+
 
   return (
     <View style={styles.container}>
@@ -55,12 +50,13 @@ export default function RegisterScreen() {
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.content}>
             {/* Back Button */}
-            <Pressable 
+            <Pressable
               style={styles.backButton}
               onPress={() => router.back()}
             >
               <MaterialIcons name="arrow-back" size={24} color="#333" />
             </Pressable>
+
 
             {/* Header */}
             <View style={styles.header}>
@@ -70,6 +66,7 @@ export default function RegisterScreen() {
               <Text style={styles.title}>Create Account</Text>
               <Text style={styles.subtitle}>Register to manage campaigns</Text>
             </View>
+
 
             {/* Form */}
             <View style={styles.form}>
@@ -87,6 +84,7 @@ export default function RegisterScreen() {
                 </View>
               </View>
 
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Email</Text>
                 <View style={styles.inputContainer}>
@@ -103,6 +101,7 @@ export default function RegisterScreen() {
                 </View>
               </View>
 
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Password</Text>
                 <View style={styles.inputContainer}>
@@ -116,14 +115,15 @@ export default function RegisterScreen() {
                     secureTextEntry={!showPassword}
                   />
                   <Pressable onPress={() => setShowPassword(!showPassword)}>
-                    <MaterialIcons 
-                      name={showPassword ? "visibility" : "visibility-off"} 
-                      size={20} 
-                      color="#666" 
+                    <MaterialIcons
+                      name={showPassword ? "visibility" : "visibility-off"}
+                      size={20}
+                      color="#666"
                     />
                   </Pressable>
                 </View>
               </View>
+
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Confirm Password</Text>
@@ -138,16 +138,17 @@ export default function RegisterScreen() {
                     secureTextEntry={!showConfirmPassword}
                   />
                   <Pressable onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                    <MaterialIcons 
-                      name={showConfirmPassword ? "visibility" : "visibility-off"} 
-                      size={20} 
-                      color="#666" 
+                    <MaterialIcons
+                      name={showConfirmPassword ? "visibility" : "visibility-off"}
+                      size={20}
+                      color="#666"
                     />
                   </Pressable>
                 </View>
               </View>
 
-              <Pressable 
+
+              <Pressable
                 style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
                 onPress={handleRegister}
                 disabled={isLoading}
@@ -156,6 +157,7 @@ export default function RegisterScreen() {
                   {isLoading ? 'Creating Account...' : 'Create Account'}
                 </Text>
               </Pressable>
+
 
               <View style={styles.loginContainer}>
                 <Text style={styles.loginText}>Already have an account? </Text>
@@ -170,6 +172,7 @@ export default function RegisterScreen() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -269,3 +272,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+
+
+

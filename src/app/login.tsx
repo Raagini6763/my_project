@@ -4,11 +4,13 @@ import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
 
   const handleLogin = () => {
     if (!email || !password) {
@@ -16,39 +18,30 @@ export default function LoginScreen() {
       return;
     }
 
+
     setIsLoading(true);
     // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
       // For demo purposes, any email/password works
-      Alert.alert(
-        'Success',
-        'Logged in successfully! Welcome to the admin dashboard.',
-        [
-          {
-            text: 'Go to Dashboard',
-            onPress: () => {
-              // Replace the current screen with dashboard_admin
-              // This prevents going back to login with back button
-              router.replace('/dashboard_admin');
-            },
-          },
-        ]
-      );
+      // Replace the current screen so the back button does not return to login.
+      router.replace('/dashboard_admin');
     }, 1500);
   };
+
 
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
           {/* Back Button */}
-          <Pressable 
+          <Pressable
             style={styles.backButton}
             onPress={() => router.back()}
           >
             <MaterialIcons name="arrow-back" size={24} color="#333" />
           </Pressable>
+
 
           {/* Header */}
           <View style={styles.header}>
@@ -58,6 +51,7 @@ export default function LoginScreen() {
             <Text style={styles.title}>Admin Login</Text>
             <Text style={styles.subtitle}>Sign in to manage your campaigns</Text>
           </View>
+
 
           {/* Form */}
           <View style={styles.form}>
@@ -77,6 +71,7 @@ export default function LoginScreen() {
               </View>
             </View>
 
+
             <View style={styles.inputGroup}>
               <Text style={styles.label}>Password</Text>
               <View style={styles.inputContainer}>
@@ -90,20 +85,22 @@ export default function LoginScreen() {
                   secureTextEntry={!showPassword}
                 />
                 <Pressable onPress={() => setShowPassword(!showPassword)}>
-                  <MaterialIcons 
-                    name={showPassword ? "visibility" : "visibility-off"} 
-                    size={20} 
-                    color="#666" 
+                  <MaterialIcons
+                    name={showPassword ? "visibility" : "visibility-off"}
+                    size={20}
+                    color="#666"
                   />
                 </Pressable>
               </View>
             </View>
 
+
             <Pressable style={styles.forgotPassword}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </Pressable>
 
-            <Pressable 
+
+            <Pressable
               style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
               onPress={handleLogin}
               disabled={isLoading}
@@ -112,6 +109,7 @@ export default function LoginScreen() {
                 {isLoading ? 'Logging in...' : 'Login'}
               </Text>
             </Pressable>
+
 
             <View style={styles.registerContainer}>
               <Text style={styles.registerText}>Don't have an account? </Text>
@@ -125,6 +123,7 @@ export default function LoginScreen() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
@@ -232,3 +231,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
+
+
+

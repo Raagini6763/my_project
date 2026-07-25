@@ -1,6 +1,7 @@
+import { createCampaign, fetchAdminProfile, fetchCampaigns, fetchPendingStories, updateStoryStatus } from '@/services/firebaseService';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -32,67 +33,34 @@ export default function DashboardAdminScreen() {
   const [campaignPosts, setCampaignPosts] = useState('');
   const [campaignFrequency, setCampaignFrequency] = useState('');
 
-  const [pendingStories, setPendingStories] = useState<PendingStory[]>([
-    {
-      id: '1',
-      title: 'Broken streetlights near school',
-      author: 'Rahul Sharma',
-      location: 'Wardha, MH',
-      type: 'Podcast',
-      description: 'Dark roads putting students at risk during evening classes',
-      date: '2026-07-20',
-      status: 'pending',
-    },
-    {
-      id: '2',
-      title: 'Water shortage in slum area',
-      author: 'Priya Patel',
-      location: 'Mumbai, MH',
-      type: 'Article',
-      description: 'Residents walk over 2 km every day for clean drinking water.',
-      date: '2026-07-19',
-      status: 'pending',
-    },
-    {
-      id: '3',
-      title: 'Unsafe bus stop for girls',
-      author: 'Amit Kumar',
-      location: 'Nagpur, MH',
-      type: 'Reel',
-      description: 'No shelter or lighting at main bus stop near college',
-      date: '2026-07-18',
-      status: 'pending',
-    },
-  ]);
+  const [pendingStories, setPendingStories] = useState<PendingStory[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [adminName, setAdminName] = useState('Admin');
 
-  const [campaigns, setCampaigns] = useState<Campaign[]>([
-    {
-      id: '1',
-      title: 'Instagram Campaign',
-      platform: 'Instagram',
-      posts: 5,
-      frequency: 'Weekly',
-      status: 'active',
-    },
-    {
-      id: '2',
-      title: 'WhatsApp Campaign',
-      platform: 'WhatsApp',
-      posts: 3,
-      frequency: 'Weekly',
-      status: 'active',
-    },
-  ]);
+  useEffect(() => {
+    const loadData = async () => {
+      const [storiesData, campaignsData, adminProfile] = await Promise.all([
+        fetchPendingStories(),
+        fetchCampaigns(),
+        fetchAdminProfile(),
+      ]);
 
-  const handleApprove = (storyId: string) => {
-    setPendingStories(prev =>
-      prev.map(story =>
-        story.id === storyId
-          ? { ...story, status: 'approved' }
-          : story
-      )
-    );
-    Alert.alert('Success', 'Story approved successfully!');
+      setPendingStories(storiesData as PendingStory[]);
+      setCampaigns(campaignsData as Campaign[]);
+      setAdminName(adminProfile?.name || 'Admin');
+    };
+
+    loadData();
+  }, []);
+
+  const handleApprove = async (storyId: string) => {
+    const success = await updateStoryStatus(storyId, 'approved');
+    if (success) {
+      setPendingStories(prev => prev.filter(story => story.id !== storyId));
+      Alert.alert('Success', 'Story approved successfully!');
+    } else {
+      Alert.alert('Error', 'Could not approve story right now.');
+    }
   };
 
   const handleReject = (storyId: string) => {
@@ -104,43 +72,44 @@ export default function DashboardAdminScreen() {
         {
           text: 'Reject',
           style: 'destructive',
-          onPress: () => {
-            setPendingStories(prev =>
-              prev.map(story =>
-                story.id === storyId
-                  ? { ...story, status: 'rejected' }
-                  : story
-              )
-            );
-            Alert.alert('Rejected', 'Story has been rejected.');
+          onPress: async () => {
+            const success = await updateStoryStatus(storyId, 'rejected');
+            if (success) {
+              setPendingStories(prev => prev.filter(story => story.id !== storyId));
+              Alert.alert('Rejected', 'Story has been rejected.');
+            } else {
+              Alert.alert('Error', 'Could not reject story right now.');
+            }
           },
         },
       ]
     );
   };
 
-  const handleCreateCampaign = () => {
+  const handleCreateCampaign = async () => {
     if (!campaignTitle || !campaignPlatform || !campaignPosts || !campaignFrequency) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
-    const newCampaign: Campaign = {
-      id: Date.now().toString(),
+    const created = await createCampaign({
       title: campaignTitle,
       platform: campaignPlatform,
-      posts: parseInt(campaignPosts),
+      posts: parseInt(campaignPosts, 10),
       frequency: campaignFrequency,
-      status: 'active',
-    };
+    });
 
-    setCampaigns(prev => [...prev, newCampaign]);
-    setCampaignTitle('');
-    setCampaignPlatform('');
-    setCampaignPosts('');
-    setCampaignFrequency('');
-    setIsModalVisible(false);
-    Alert.alert('Success', 'Campaign created successfully!');
+    if (created) {
+      setCampaigns(prev => [...prev, created as Campaign]);
+      setCampaignTitle('');
+      setCampaignPlatform('');
+      setCampaignPosts('');
+      setCampaignFrequency('');
+      setIsModalVisible(false);
+      Alert.alert('Success', 'Campaign created successfully!');
+    } else {
+      Alert.alert('Error', 'Could not create campaign right now.');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -177,7 +146,7 @@ export default function DashboardAdminScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Welcome, Admin</Text>
+            <Text style={styles.greeting}>Welcome, {adminName}</Text>
             <Text style={styles.subGreeting}>Manage stories & campaigns</Text>
           </View>
           <Pressable 

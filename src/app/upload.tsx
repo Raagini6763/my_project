@@ -1,8 +1,9 @@
+import { createStory, seedInitialData } from '@/services/firebaseService';
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { router, usePathname } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     Alert,
     KeyboardAvoidingView,
@@ -45,9 +46,16 @@ export default function UploadScreen() {
   const [currentField, setCurrentField] = useState("");
   const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
   const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadedMediaUri, setUploadedMediaUri] = useState<string | null>(null);
+  const [uploadedMediaType, setUploadedMediaType] = useState<'text' | 'image' | 'video' | 'audio'>('text');
 
   const pathname = usePathname();
   const navigation = getNavigationItems(pathname);
+
+  useEffect(() => {
+    seedInitialData();
+  }, []);
 
   const formats = [
     { id: "writing", label: "Writing", icon: "edit" },
@@ -85,6 +93,9 @@ export default function UploadScreen() {
           quality: 1,
         });
         if (!result.canceled) {
+          const uri = result.assets?.[0]?.uri ?? null;
+          setUploadedMediaUri(uri);
+          setUploadedMediaType(formatId === "photos" ? "image" : "video");
           Alert.alert(
             "Success!",
             `${formatId === "photos" ? "Photo" : "Video"} captured successfully!`,
@@ -138,6 +149,8 @@ export default function UploadScreen() {
       const uri = recording.getURI();
       setRecording(null);
       
+      setUploadedMediaUri(uri);
+      setUploadedMediaType('audio');
       Alert.alert(
         "Recording Complete",
         "Your podcast has been recorded successfully!",
@@ -178,7 +191,7 @@ export default function UploadScreen() {
   const saveNote = () => {
     switch(currentField) {
       case "writing":
-        // Save as story content
+        setUploadedMediaType('text');
         Alert.alert("Story Saved", "Your writing has been saved!");
         break;
       case "whatHappened": setWhatHappened(noteContent); break;
@@ -189,6 +202,56 @@ export default function UploadScreen() {
       case "category": setCategory(noteContent); break;
     }
     setIsNoteModalVisible(false);
+  };
+
+  const handlePublishStory = async () => {
+    if (!title || !format || !category) {
+      Alert.alert('Incomplete', 'Please add a title, select a format, and choose a category.');
+      return;
+    }
+
+    if (!whatHappened || !whyMatters || !whatChange || !howHelp || !location) {
+      Alert.alert('Incomplete', 'Please complete all story details before publishing.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await createStory({
+        title,
+        description: `${whatHappened}\n\nWhy it matters: ${whyMatters}\n\nWhat change: ${whatChange}\n\nHow others can help: ${howHelp}`,
+        location,
+        category,
+        storyType: format === 'writing' ? 'Article' : format === 'podcast' ? 'Podcast' : format === 'video' ? 'Reel' : 'Photo Essay',
+        authorEmail: 'anonymous@awaaz.com',
+        mediaUri: uploadedMediaUri,
+        mediaType: uploadedMediaType,
+      });
+
+      Alert.alert('Success!', 'Your story has been submitted for admin review.', [
+        { text: 'View Stories', onPress: () => router.push('/stories') },
+        { text: 'OK' },
+      ]);
+
+      setTitle('');
+      setFormat('');
+      setWhatHappened('');
+      setWhyMatters('');
+      setWhatChange('');
+      setHowHelp('');
+      setLocation('');
+      setCategory('');
+      setCustomCategory('');
+      setUploadedMediaUri(null);
+      setUploadedMediaType('text');
+      setStep(1);
+    } catch (error) {
+      console.warn('Story publish failed:', error);
+      Alert.alert('Error', 'Could not publish story right now. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCategorySelect = (selectedCategory: string) => {
@@ -381,26 +444,11 @@ export default function UploadScreen() {
         </Pressable>
 
         <Pressable 
-          style={[styles.button, styles.publishButton]}
-          onPress={() => {
-            if (!category) {
-              Alert.alert("Incomplete", "Please select a category.");
-              return;
-            }
-            Alert.alert(
-              "Success!",
-              "Your story has been published! 🎉",
-              [
-                {
-                  text: "View Stories",
-                  onPress: () => router.push("/stories")
-                },
-                { text: "OK" }
-              ]
-            );
-          }}
+          style={[styles.button, styles.publishButton, isSubmitting && styles.publishButtonDisabled]}
+          onPress={handlePublishStory}
+          disabled={isSubmitting}
         >
-          <Text style={styles.publishButtonText}>Publish Story</Text>
+          <Text style={styles.publishButtonText}>{isSubmitting ? 'Submitting...' : 'Publish Story'}</Text>
         </Pressable>
       </View>
     </View>
