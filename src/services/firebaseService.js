@@ -1,5 +1,12 @@
 import { getApps, initializeApp } from 'firebase/app';
 import {
+    createUserWithEmailAndPassword,
+    getAuth,
+    signInWithEmailAndPassword,
+    signOut,
+    updateProfile,
+} from 'firebase/auth';
+import {
     addDoc,
     collection,
     deleteDoc,
@@ -7,6 +14,7 @@ import {
     getDocs,
     getFirestore,
     serverTimestamp,
+    setDoc,
     updateDoc,
 } from 'firebase/firestore';
 import { getDownloadURL, getStorage, ref, uploadBytes } from 'firebase/storage';
@@ -24,6 +32,7 @@ const firebaseConfig = {
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const auth = getAuth(app);
 
 const hardcodedStories = [
   {
@@ -144,7 +153,7 @@ const uploadMedia = async (mediaUri, pathPrefix = 'stories') => {
     return await getDownloadURL(storageRef);
   } catch (error) {
     console.warn('Media upload failed:', error);
-    return null;
+    throw new Error('The media file could not be uploaded. Check Firebase Storage rules and try again.');
   }
 };
 
@@ -201,11 +210,53 @@ export const fetchApprovedStories = async () => {
         mediaUrl: item.mediaUrl || null,
       }));
 
-    return stories.length ? stories : hardcodedStories;
+    // Demo posts remain visible alongside approved Firestore posts.
+    const storedIds = new Set(stories.map((story) => story.id));
+    return [...hardcodedStories.filter((story) => !storedIds.has(story.id)), ...stories];
   } catch (error) {
     console.warn('Failed to load stories from Firestore:', error);
     return hardcodedStories;
   }
+};
+
+export const registerAdmin = async ({ name, email, password }) => {
+  const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+  await updateProfile(credential.user, { displayName: name.trim() });
+
+  const adminPayload = {
+    uid: credential.user.uid,
+    name: name.trim(),
+    email: credential.user.email,
+    role: 'admin',
+    status: 'active',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  try {
+    await setDoc(doc(db, 'admins', credential.user.uid), adminPayload);
+    return { id: credential.user.uid, ...adminPayload, profileSaved: true };
+  } catch (error) {
+    // Authentication succeeded, so do not strand the newly-created admin on
+    // the registration screen if Firestore is temporarily unavailable.
+    console.warn('Admin account created, but profile storage failed:', error);
+    return { id: credential.user.uid, ...adminPayload, profileSaved: false };
+  }
+};
+
+export const loginAdmin = async ({ email, password }) => {
+  const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
+  const adminSnapshot = await getDocs(collection(db, 'admins'));
+  const adminRecord = adminSnapshot.docs.find(
+    (item) => item.id === credential.user.uid || item.data().uid === credential.user.uid
+  );
+
+  if (!adminRecord || adminRecord.data().role !== 'admin' || adminRecord.data().status !== 'active') {
+    await signOut(auth);
+    throw new Error('This account does not have active admin access.');
+  }
+
+  return { id: adminRecord.id, ...adminRecord.data() };
 };
 
 export const fetchPendingStories = async () => {

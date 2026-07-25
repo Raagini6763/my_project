@@ -1,9 +1,12 @@
 import { fetchApprovedStories } from '@/services/firebaseService';
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { router, usePathname } from "expo-router";
-import { useEffect, useState } from "react";
+import { ResizeMode, Video } from 'expo-av';
+import { router, useFocusEffect, usePathname } from "expo-router";
+import { useCallback, useState } from "react";
 import {
     Alert,
+    Image,
+    Linking,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -78,21 +81,29 @@ const getNavigationItems = (pathname: string) => [
 
 export default function StoriesScreen() {
   const [selectedFilter, setSelectedFilter] = useState("Podcast");
-  const [stories, setStories] = useState(initialStories);
+  const [stories, setStories] = useState<any[]>(initialStories);
   const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
   const navigation = getNavigationItems(pathname);
 
-  useEffect(() => {
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
     const loadStories = async () => {
       setIsLoading(true);
       const approvedStories = await fetchApprovedStories();
-      setStories(approvedStories);
-      setIsLoading(false);
+      if (active) {
+        setStories(approvedStories);
+        setIsLoading(false);
+      }
     };
 
     loadStories();
-  }, []);
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
 
   const filteredStories = stories.filter((story) =>
     selectedFilter === ""
@@ -275,6 +286,26 @@ export default function StoriesScreen() {
                 <Text style={styles.description}>
                   {story.description}
                 </Text>
+
+                {story.mediaUrl && story.mediaType === 'image' ? (
+                  <Image source={{ uri: story.mediaUrl }} style={styles.storyMedia} resizeMode="cover" />
+                ) : null}
+
+                {story.mediaUrl && story.mediaType === 'video' ? (
+                  <Video
+                    source={{ uri: story.mediaUrl }}
+                    style={styles.storyMedia}
+                    useNativeControls
+                    resizeMode={ResizeMode.CONTAIN}
+                  />
+                ) : null}
+
+                {story.mediaUrl && story.mediaType === 'audio' ? (
+                  <Pressable style={styles.audioButton} onPress={() => Linking.openURL(story.mediaUrl)}>
+                    <MaterialIcons name="play-arrow" size={22} color="#FFF" />
+                    <Text style={styles.audioButtonText}>Play voice recording</Text>
+                  </Pressable>
+                ) : null}
 
                 {/* LOCATION */}
 
@@ -518,6 +549,29 @@ const styles = StyleSheet.create({
     color: "#5B6470",
     fontSize: 15,
     lineHeight: 22,
+  },
+  storyMedia: {
+    width: "100%",
+    height: 220,
+    borderRadius: 14,
+    backgroundColor: "#F0EDE8",
+    marginTop: 16,
+  },
+  audioButton: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#087D97",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 16,
+  },
+  audioButtonText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "700",
   },
 
   infoRow: {

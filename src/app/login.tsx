@@ -1,3 +1,4 @@
+import { loginAdmin } from '@/services/firebaseService';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -12,7 +13,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -20,13 +21,17 @@ export default function LoginScreen() {
 
 
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-      // For demo purposes, any email/password works
-      // Replace the current screen so the back button does not return to login.
+    try {
+      await loginAdmin({ email, password });
       router.replace('/dashboard_admin');
-    }, 1500);
+    } catch (error: any) {
+      const message = error?.code === 'auth/invalid-credential'
+        ? 'Invalid email or password.'
+        : error?.message || 'Could not sign in. Please try again.';
+      Alert.alert('Login failed', message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
 

@@ -1,9 +1,9 @@
-import { createStory, seedInitialData } from '@/services/firebaseService';
+import { createStory } from '@/services/firebaseService';
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { router, usePathname } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
     Alert,
     KeyboardAvoidingView,
@@ -52,10 +52,6 @@ export default function UploadScreen() {
 
   const pathname = usePathname();
   const navigation = getNavigationItems(pathname);
-
-  useEffect(() => {
-    seedInitialData();
-  }, []);
 
   const formats = [
     { id: "writing", label: "Writing", icon: "edit" },
@@ -771,6 +767,9 @@ const styles = StyleSheet.create({
   },
   publishButton: {
     backgroundColor: "#087D97",
+  },
+  publishButtonDisabled: {
+    opacity: 0.6,
   },
   publishButtonText: {
     color: "#FFF",

@@ -1,3 +1,4 @@
+import { registerAdmin } from '@/services/firebaseService';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -15,7 +16,7 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!fullName || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -35,12 +36,26 @@ export default function RegisterScreen() {
 
 
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    // Do not let a slow Firebase request block the screen transition.
+    router.replace('/dashboard_admin');
+    try {
+      const admin = await registerAdmin({ name: fullName, email, password });
+      if (!admin.profileSaved) {
+        setTimeout(() => {
+          Alert.alert(
+            'Account created',
+            'You are signed in, but the admin profile could not be saved. Check your Firestore rules for the admins collection.'
+          );
+        }, 300);
+      }
+    } catch (error: any) {
+      const message = error?.code === 'auth/email-already-in-use'
+        ? 'An account already exists for this email.'
+        : error?.message || 'Could not create the admin account.';
+      Alert.alert('Registration failed', message);
+    } finally {
       setIsLoading(false);
-      // Replace the current screen so the back button does not return to registration.
-      router.replace('/dashboard_admin');
-    }, 1500);
+    }
   };
 
 

@@ -10,4 +10,6 @@ declare module '@/services/firebaseService' {
   export const fetchAdminProfile: () => Promise<any>;
   export const removeStory: (storyId: string) => Promise<boolean>;
   export const hardcodedAdminProfile: any;
+  export const registerAdmin: (payload: { name: string; email: string; password: string }) => Promise<any>;
+  export const loginAdmin: (payload: { email: string; password: string }) => Promise<any>;
 }
