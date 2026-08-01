@@ -1,4 +1,5 @@
 import { createStory } from '@/services/firebaseService';
+import { refineStoryText } from '@/services/geminiService';
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
@@ -214,9 +215,13 @@ export default function UploadScreen() {
     setIsSubmitting(true);
 
     try {
+      const storyBody = `${whatHappened}\n\nWhy it matters: ${whyMatters}\n\nWhat change: ${whatChange}\n\nHow others can help: ${howHelp}`;
+      const refinedResult = await refineStoryText(storyBody);
+      const refinedDescription = refinedResult.refinedText || storyBody;
+
       await createStory({
         title,
-        description: `${whatHappened}\n\nWhy it matters: ${whyMatters}\n\nWhat change: ${whatChange}\n\nHow others can help: ${howHelp}`,
+        description: refinedDescription,
         location,
         category,
         storyType: format === 'writing' ? 'Article' : format === 'podcast' ? 'Podcast' : format === 'video' ? 'Reel' : 'Photo Essay',
@@ -225,7 +230,12 @@ export default function UploadScreen() {
         mediaType: uploadedMediaType,
       });
 
-      Alert.alert('Success!', 'Your story has been submitted for admin review.', [
+      Alert.alert(
+        'Success!',
+        refinedResult.needsRefinement
+          ? 'Your story was refined and submitted for admin review.'
+          : 'Your story has been submitted for admin review.',
+        [
         { text: 'View Stories', onPress: () => router.push('/stories') },
         { text: 'OK' },
       ]);

@@ -1,7 +1,8 @@
 import { SymbolView } from '@/components/symbol-view';
+import { translateCatalog } from '@/services/geminiService';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 type ThemeMode = 'light' | 'dark';
@@ -40,7 +41,47 @@ const palettes = {
 export default function HomeScreen() {
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
+  const [copy, setCopy] = useState({
+    title: 'Impact in Action',
+    subtitle: 'Share stories from your community, turn them into campaigns, and guide people toward action.',
+    browse: 'Browse Issues',
+    admin: 'Admin Login',
+    light: 'Light',
+    dark: 'Dark',
+  });
   const palette = palettes[themeMode];
+
+  useEffect(() => {
+    const loadTranslation = async () => {
+      if (selectedLanguage === 'English') {
+        setCopy({
+          title: 'Impact in Action',
+          subtitle: 'Share stories from your community, turn them into campaigns, and guide people toward action.',
+          browse: 'Browse Issues',
+          admin: 'Admin Login',
+          light: 'Light',
+          dark: 'Dark',
+        });
+        return;
+      }
+
+      const translated = await translateCatalog(
+        {
+          title: 'Impact in Action',
+          subtitle: 'Share stories from your community, turn them into campaigns, and guide people toward action.',
+          browse: 'Browse Issues',
+          admin: 'Admin Login',
+          light: 'Light',
+          dark: 'Dark',
+        },
+        selectedLanguage
+      );
+
+      setCopy(translated);
+    };
+
+    loadTranslation();
+  }, [selectedLanguage]);
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.background }]}>
@@ -55,11 +96,8 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.copy}>
-            <Text style={[styles.title, { color: palette.text }]}>Impact in Action</Text>
-            <Text style={[styles.subtitle, { color: palette.body }]}>
-              Share stories from your community, turn them into campaigns, and guide people toward
-              action.
-            </Text>
+            <Text style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
+            <Text style={[styles.subtitle, { color: palette.body }]}>{copy.subtitle}</Text>
           </View>
 
           <View style={styles.languageWrap}>
@@ -112,7 +150,7 @@ export default function HomeScreen() {
                 tintColor="#FFFFFF"
                 style={styles.actionIcon}
               />
-              <Text style={styles.actionText}>Browse Issues</Text>
+              <Text style={styles.actionText}>{copy.browse}</Text>
             </Pressable>
 
             <Pressable
@@ -124,7 +162,7 @@ export default function HomeScreen() {
                 pressed && styles.pressed,
               ]}>
               <MaterialIcons name="admin-panel-settings" size={21} color="#FFFFFF" />
-              <Text style={styles.actionText}>Admin Login</Text>
+              <Text style={styles.actionText}>{copy.admin}</Text>
             </Pressable>
           </View>
 
@@ -154,7 +192,7 @@ export default function HomeScreen() {
                       styles.modeText,
                       { color: isActive ? '#FFFFFF' : palette.body },
                     ]}>
-                    {mode === 'light' ? 'Light' : 'Dark'}
+                    {mode === 'light' ? copy.light : copy.dark}
                   </Text>
                 </Pressable>
               );
