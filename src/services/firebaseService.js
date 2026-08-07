@@ -29,19 +29,19 @@ import { hasText, isCompleteStory } from "../utils/validation";
 import { uploadStoryMedia } from "./supabaseStorageService";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAZc2hpgaarks5TKlIGxAwQZkcozGlOU9U",
+  apiKey: "AIzaSyB-KPr2H3wN-rRodn1LZ-XLSv8uItkZsxc",
 
-  authDomain: "tariffwars-38f95.firebaseapp.com",
+  authDomain: "project-ec2b7.firebaseapp.com",
 
-  projectId: "tariffwars-38f95",
+  projectId: "project-ec2b7",
 
-  storageBucket: "tariffwars-38f95.firebasestorage.app",
+  storageBucket: "project-ec2b7.firebasestorage.app",
 
-  messagingSenderId: "987200533909",
+  messagingSenderId: "280840269934",
 
-  appId: "1:987200533909:web:4909ce21f9bf21440ab29c",
+  appId: "1:280840269934:web:2b5eb24a5ee82872e4f67f",
 
-  measurementId: "G-HHD1L3J8S5",
+  measurementId: "G-XGJ3X1W1HC",
 };
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);

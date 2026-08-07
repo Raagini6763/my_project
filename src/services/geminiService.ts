@@ -8,7 +8,7 @@ type TranslateResult = {
 };
 
 const WORKER_URL = process.env.EXPO_PUBLIC_GEMINI_WORKER_URL
-  || 'https://gemini-worker.awaaz.workers.dev';
+  || 'https://gemini-worker.raagini-awaaz.workers.dev';
 
 const callWorker = async <T>(payload: Record<string, unknown>): Promise<T> => {
   const response = await fetch(WORKER_URL, {

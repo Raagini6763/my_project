@@ -1,5 +1,5 @@
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://qaxdapuhtxmmxoxncfpu.supabase.co';
-const SUPABASE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_oaN84oemwi7I4Jcokzj2mA_-44OOYJK';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://rhrgbxtfywvyuoogdjnj.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_UQX2bbzeOUguUQiT_ZrmDA_xpcCDihF';
 const STORAGE_BUCKET = 'sample';
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
