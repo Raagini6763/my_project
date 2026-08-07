@@ -1,8 +1,10 @@
+import { TranslatedText as Text } from '@/components/translated-text';
+import { TranslatedTextInput as TextInput } from '@/components/translated-text-input';
 import { loginAdmin } from '@/services/firebaseService';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
@@ -100,11 +102,6 @@ export default function LoginScreen() {
             </View>
 
 
-            <Pressable style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-            </Pressable>
-
-
             <Pressable
               style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
               onPress={handleLogin}
@@ -116,12 +113,6 @@ export default function LoginScreen() {
             </Pressable>
 
 
-            <View style={styles.registerContainer}>
-              <Text style={styles.registerText}>Don't have an account? </Text>
-              <Pressable onPress={() => router.push('/register')}>
-                <Text style={styles.registerLink}>Register</Text>
-              </Pressable>
-            </View>
           </View>
         </View>
       </SafeAreaView>
@@ -197,15 +188,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 10,
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    color: '#087D97',
-    fontSize: 14,
-    fontWeight: '600',
-  },
   loginButton: {
     backgroundColor: '#087D97',
     paddingVertical: 16,
@@ -220,20 +202,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 18,
     fontWeight: '700',
-  },
-  registerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  registerText: {
-    color: '#666',
-    fontSize: 15,
-  },
-  registerLink: {
-    color: '#087D97',
-    fontSize: 15,
-    fontWeight: '600',
   },
 });
 

@@ -1,7 +1,9 @@
+import { TranslatedText as Text } from '@/components/translated-text';
+import { TranslatedTextInput as TextInput } from '@/components/translated-text-input';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router, usePathname } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type ThemeMode = 'light' | 'dark';

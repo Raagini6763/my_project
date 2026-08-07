@@ -1,13 +1,12 @@
 import { SymbolView } from '@/components/symbol-view';
-import { translateCatalog } from '@/services/geminiService';
+import { TranslatedText as Text } from '@/components/translated-text';
+import { SUPPORTED_LANGUAGES, useLanguage } from '@/contexts/language-context';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 type ThemeMode = 'light' | 'dark';
-
-const languages = ['English', 'हिंदी', 'मराठी', 'தமிழ்', 'বাংলা'];
 
 const palettes = {
   light: {
@@ -39,49 +38,10 @@ const palettes = {
 } as const;
 
 export default function HomeScreen() {
-  const [selectedLanguage, setSelectedLanguage] = useState('English');
+  const { language, setLanguage, isTranslating, translationError } = useLanguage();
   const [themeMode, setThemeMode] = useState<ThemeMode>('light');
-  const [copy, setCopy] = useState({
-    title: 'Impact in Action',
-    subtitle: 'Share stories from your community, turn them into campaigns, and guide people toward action.',
-    browse: 'Browse Issues',
-    admin: 'Admin Login',
-    light: 'Light',
-    dark: 'Dark',
-  });
+  const [showMoreLanguages, setShowMoreLanguages] = useState(false);
   const palette = palettes[themeMode];
-
-  useEffect(() => {
-    const loadTranslation = async () => {
-      if (selectedLanguage === 'English') {
-        setCopy({
-          title: 'Impact in Action',
-          subtitle: 'Share stories from your community, turn them into campaigns, and guide people toward action.',
-          browse: 'Browse Issues',
-          admin: 'Admin Login',
-          light: 'Light',
-          dark: 'Dark',
-        });
-        return;
-      }
-
-      const translated = await translateCatalog(
-        {
-          title: 'Impact in Action',
-          subtitle: 'Share stories from your community, turn them into campaigns, and guide people toward action.',
-          browse: 'Browse Issues',
-          admin: 'Admin Login',
-          light: 'Light',
-          dark: 'Dark',
-        },
-        selectedLanguage
-      );
-
-      setCopy(translated);
-    };
-
-    loadTranslation();
-  }, [selectedLanguage]);
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.background }]}>
@@ -96,19 +56,19 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.copy}>
-            <Text style={[styles.title, { color: palette.text }]}>{copy.title}</Text>
-            <Text style={[styles.subtitle, { color: palette.body }]}>{copy.subtitle}</Text>
+            <Text style={[styles.title, { color: palette.text }]}>Impact in Action</Text>
+            <Text style={[styles.subtitle, { color: palette.body }]}>Share stories from your community, turn them into campaigns, and guide people toward action.</Text>
           </View>
 
           <View style={styles.languageWrap}>
-            {languages.map((language) => {
-              const isSelected = language === selectedLanguage;
+            {SUPPORTED_LANGUAGES.slice(0, 5).map((item) => {
+              const isSelected = item.code === language;
               return (
                 <Pressable
-                  key={language}
+                  key={item.code}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isSelected }}
-                  onPress={() => setSelectedLanguage(language)}
+                  onPress={() => setLanguage(item.code)}
                   style={({ pressed }) => [
                     styles.languageChip,
                     { backgroundColor: isSelected ? palette.accent : palette.chip },
@@ -119,7 +79,7 @@ export default function HomeScreen() {
                       styles.languageText,
                       { color: isSelected ? '#FFFFFF' : palette.chipText },
                     ]}>
-                    {language}
+                    {item.label}
                   </Text>
                 </Pressable>
               );
@@ -127,6 +87,7 @@ export default function HomeScreen() {
 
             <Pressable
               accessibilityRole="button"
+              onPress={() => setShowMoreLanguages(true)}
               style={({ pressed }) => [
                 styles.languageChip,
                 { backgroundColor: palette.chip },
@@ -135,6 +96,9 @@ export default function HomeScreen() {
               <Text style={[styles.moreText, { color: palette.chipText }]}>+ More</Text>
             </Pressable>
           </View>
+
+          {isTranslating ? <Text style={[styles.translationStatus, { color: palette.body }]}>Translating application…</Text> : null}
+          {translationError ? <Text style={styles.translationError}>{translationError}</Text> : null}
 
           <View style={styles.actions}>
             <Pressable
@@ -150,7 +114,7 @@ export default function HomeScreen() {
                 tintColor="#FFFFFF"
                 style={styles.actionIcon}
               />
-              <Text style={styles.actionText}>{copy.browse}</Text>
+              <Text style={styles.actionText}>Browse Issues</Text>
             </Pressable>
 
             <Pressable
@@ -162,7 +126,7 @@ export default function HomeScreen() {
                 pressed && styles.pressed,
               ]}>
               <MaterialIcons name="admin-panel-settings" size={21} color="#FFFFFF" />
-              <Text style={styles.actionText}>{copy.admin}</Text>
+              <Text style={styles.actionText}>Admin Login</Text>
             </Pressable>
           </View>
 
@@ -192,7 +156,7 @@ export default function HomeScreen() {
                       styles.modeText,
                       { color: isActive ? '#FFFFFF' : palette.body },
                     ]}>
-                    {mode === 'light' ? copy.light : copy.dark}
+                    {mode === 'light' ? 'Light' : 'Dark'}
                   </Text>
                 </Pressable>
               );
@@ -200,6 +164,37 @@ export default function HomeScreen() {
           </View>
         </View>
       </SafeAreaView>
+
+      <Modal
+        visible={showMoreLanguages}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowMoreLanguages(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setShowMoreLanguages(false)}>
+          <Pressable style={[styles.languageModal, { backgroundColor: palette.background }]} onPress={() => {}}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: palette.text }]}>Choose a language</Text>
+              <Pressable onPress={() => setShowMoreLanguages(false)}>
+                <MaterialIcons name="close" size={24} color={palette.body} />
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={styles.moreLanguageList}>
+              {SUPPORTED_LANGUAGES.slice(5).map((item) => (
+                <Pressable
+                  key={item.code}
+                  style={[styles.moreLanguageOption, { backgroundColor: palette.chip }]}
+                  onPress={() => {
+                    setLanguage(item.code);
+                    setShowMoreLanguages(false);
+                  }}>
+                  <Text style={[styles.moreLanguageText, { color: palette.chipText }]}>{item.label}</Text>
+                  {language === item.code ? <MaterialIcons name="check" size={20} color={palette.accent} /> : null}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -278,6 +273,18 @@ const styles = StyleSheet.create({
     gap: 14,
     marginBottom: 48,
   },
+  translationStatus: {
+    fontSize: 13,
+    marginTop: -38,
+    marginBottom: 22,
+  },
+  translationError: {
+    color: '#B31217',
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: -38,
+    marginBottom: 22,
+  },
   actionButton: {
     height: 60,
     borderRadius: 18,
@@ -323,5 +330,42 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.78,
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  languageModal: {
+    maxHeight: '70%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 22,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  moreLanguageList: {
+    gap: 10,
+    paddingBottom: 20,
+  },
+  moreLanguageOption: {
+    minHeight: 50,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  moreLanguageText: {
+    fontSize: 17,
+    fontWeight: '600',
   },
 });

@@ -1,7 +1,9 @@
+import { TranslatedText as Text } from '@/components/translated-text';
+import { TranslatedTextInput as TextInput } from '@/components/translated-text-input';
 import { createStory } from '@/services/firebaseService';
 import { refineStoryText } from '@/services/geminiService';
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { Audio } from 'expo-av';
+import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import * as ImagePicker from 'expo-image-picker';
 import { router, usePathname } from "expo-router";
 import { useState } from "react";
@@ -13,8 +15,6 @@ import {
     Pressable,
     ScrollView,
     StyleSheet,
-    Text,
-    TextInput,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -31,6 +31,7 @@ export default function UploadScreen() {
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
   const [format, setFormat] = useState("");
+  const [writingContent, setWritingContent] = useState("");
   const [whatHappened, setWhatHappened] = useState("");
   const [whyMatters, setWhyMatters] = useState("");
   const [whatChange, setWhatChange] = useState("");
@@ -39,13 +40,13 @@ export default function UploadScreen() {
   const [category, setCategory] = useState("");
   const [customCategory, setCustomCategory] = useState("");
   const [isRecording, setIsRecording] = useState(false);
-  const [recording, setRecording] = useState<any>(null);
-  const [sound, setSound] = useState<any>(null);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
   const [noteContent, setNoteContent] = useState("");
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [currentField, setCurrentField] = useState("");
   const [isCategoryModalVisible, setIsCategoryModalVisible] = useState(false);
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
   const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedMediaUri, setUploadedMediaUri] = useState<string | null>(null);
@@ -78,7 +79,7 @@ export default function UploadScreen() {
       // Open notepad for writing
       setCurrentQuestion("Write your story");
       setCurrentField("writing");
-      setNoteContent("");
+      setNoteContent(writingContent);
       setIsNoteModalVisible(true);
     } else if (formatId === "video" || formatId === "photos") {
       // Open camera
@@ -114,17 +115,14 @@ export default function UploadScreen() {
 
   const startRecording = async () => {
     try {
-      const permission = await Audio.requestPermissionsAsync();
+      const permission = await AudioModule.requestRecordingPermissionsAsync();
       if (permission.granted) {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
+        await setAudioModeAsync({
+          allowsRecording: true,
+          playsInSilentMode: true,
         });
-        
-        const { recording } = await Audio.Recording.createAsync(
-          Audio.RecordingOptionsPresets.HIGH_QUALITY
-        );
-        setRecording(recording);
+        await audioRecorder.prepareToRecordAsync();
+        audioRecorder.record();
         setIsRecording(true);
         Alert.alert("Recording", "Recording started... Tap again to stop.");
       } else {
@@ -140,28 +138,17 @@ export default function UploadScreen() {
   };
 
   const stopRecording = async () => {
-    if (recording) {
+    if (isRecording) {
       setIsRecording(false);
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      setRecording(null);
+      await audioRecorder.stop();
+      const uri = audioRecorder.uri;
       
       setUploadedMediaUri(uri);
       setUploadedMediaType('audio');
       Alert.alert(
         "Recording Complete",
         "Your podcast has been recorded successfully!",
-        [
-          {
-            text: "Play",
-            onPress: async () => {
-              const { sound } = await Audio.Sound.createAsync({ uri });
-              setSound(sound);
-              await sound.playAsync();
-            }
-          },
-          { text: "OK" }
-        ]
+        [{ text: "OK" }]
       );
     }
   };
@@ -188,6 +175,7 @@ export default function UploadScreen() {
   const saveNote = () => {
     switch(currentField) {
       case "writing":
+        setWritingContent(noteContent.trim());
         setUploadedMediaType('text');
         Alert.alert("Story Saved", "Your writing has been saved!");
         break;
@@ -212,11 +200,26 @@ export default function UploadScreen() {
       return;
     }
 
+    if (format === 'writing' && !writingContent.trim()) {
+      Alert.alert('Incomplete', 'Please write your story before publishing.');
+      return;
+    }
+
+    if (format !== 'writing' && !uploadedMediaUri) {
+      Alert.alert('Incomplete', 'Please record or select the media for this story format.');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      const storyBody = `${whatHappened}\n\nWhy it matters: ${whyMatters}\n\nWhat change: ${whatChange}\n\nHow others can help: ${howHelp}`;
-      const refinedResult = await refineStoryText(storyBody);
+      const storyBody = `${writingContent.trim() ? `${writingContent.trim()}\n\n` : ''}What happened: ${whatHappened}\n\nWhy it matters: ${whyMatters}\n\nWhat change: ${whatChange}\n\nHow others can help: ${howHelp}`;
+      let refinedResult = { needsRefinement: false, refinedText: storyBody };
+      try {
+        refinedResult = await refineStoryText(storyBody);
+      } catch (error) {
+        console.warn('Story refinement unavailable; submitting original text:', error);
+      }
       const refinedDescription = refinedResult.refinedText || storyBody;
 
       await createStory({
@@ -230,18 +233,11 @@ export default function UploadScreen() {
         mediaType: uploadedMediaType,
       });
 
-      Alert.alert(
-        'Success!',
-        refinedResult.needsRefinement
-          ? 'Your story was refined and submitted for admin review.'
-          : 'Your story has been submitted for admin review.',
-        [
-        { text: 'View Stories', onPress: () => router.push('/stories') },
-        { text: 'OK' },
-      ]);
+      setIsSuccessModalVisible(true);
 
       setTitle('');
       setFormat('');
+      setWritingContent('');
       setWhatHappened('');
       setWhyMatters('');
       setWhatChange('');
@@ -635,6 +631,37 @@ export default function UploadScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={isSuccessModalVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setIsSuccessModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={[styles.modalContent, styles.successModalContent]}>
+            <View style={styles.successIcon}>
+              <MaterialIcons name="check" size={52} color="#FFF" />
+            </View>
+            <Text style={styles.successTitle}>Story sent for approval</Text>
+            <Text style={styles.successMessage}>
+              Your story was submitted successfully. It will appear on the Stories page after an admin approves it.
+            </Text>
+            <Pressable
+              style={styles.successPrimaryButton}
+              onPress={() => {
+                setIsSuccessModalVisible(false);
+                router.push('/stories');
+              }}
+            >
+              <Text style={styles.successPrimaryText}>View Stories</Text>
+            </Pressable>
+            <Pressable style={styles.successSecondaryButton} onPress={() => setIsSuccessModalVisible(false)}>
+              <Text style={styles.successSecondaryText}>Done</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -814,6 +841,53 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
     maxHeight: "80%",
+  },
+  successModalContent: {
+    alignItems: "center",
+  },
+  successIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1B8A43",
+    marginBottom: 20,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#1D2530",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  successMessage: {
+    fontSize: 16,
+    lineHeight: 23,
+    color: "#5B6470",
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  successPrimaryButton: {
+    width: "100%",
+    backgroundColor: "#087D97",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  successPrimaryText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  successSecondaryButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  successSecondaryText: {
+    color: "#087D97",
+    fontSize: 16,
+    fontWeight: "700",
   },
   modalHeader: {
     flexDirection: "row",

@@ -1,12 +1,15 @@
+import { TranslatedText as Text } from '@/components/translated-text';
+import { fetchCampaignInteraction, fetchCampaigns, updateCampaignInteraction } from '@/services/firebaseService';
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, usePathname } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+    ActivityIndicator,
     Alert,
+    Linking,
     Pressable,
     ScrollView,
     StyleSheet,
-    Text,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -33,6 +36,7 @@ interface Campaign {
   isShared: boolean;
   color: string;
   isCustomIcon?: boolean;
+  campaignUrl: string;
 }
 
 const InstagramIcon = ({ color }: { color: string }) => (
@@ -69,69 +73,40 @@ const WhatsAppIcon = ({ color }: { color: string }) => (
 );
 
 export default function CampaignsScreen() {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([
-    {
-      id: "1",
-      title: "Instagram",
-      platform: "Instagram",
-      platformIcon: "instagram",
-      posts: 5,
-      frequency: "Weekly",
-      joined: 28,
-      reach: "2,400+",
-      isJoined: false,
-      isShared: false,
-      color: "#E4405F",
-      isCustomIcon: true,
-    },
-    {
-      id: "2",
-      title: "WhatsApp",
-      platform: "WhatsApp",
-      platformIcon: "whatsapp",
-      posts: 3,
-      frequency: "Weekly",
-      joined: 45,
-      reach: "3,100+",
-      isJoined: false,
-      isShared: false,
-      color: "#25D366",
-      isCustomIcon: true,
-    },
-    {
-      id: "3",
-      title: "Email",
-      platform: "Email",
-      platformIcon: "email",
-      posts: 2,
-      frequency: "Weekly",
-      joined: 12,
-      reach: "890+",
-      isJoined: false,
-      isShared: false,
-      color: "#EA4335",
-      isCustomIcon: false,
-    },
-    {
-      id: "4",
-      title: "Community",
-      platform: "Community",
-      platformIcon: "people",
-      posts: 1,
-      frequency: "Ongoing",
-      joined: 156,
-      reach: "Expanding",
-      isJoined: false,
-      isShared: false,
-      color: "#7B61FF",
-      isCustomIcon: false,
-    },
-  ]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [pendingCampaignId, setPendingCampaignId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchCampaigns()
+      .then(async (items: any[]) => Promise.all(items.map(async (item) => {
+        const colors: Record<string, string> = { Instagram: '#E4405F', WhatsApp: '#25D366', Email: '#EA4335', Community: '#7B61FF' };
+        const icons: Record<string, string> = { Instagram: 'camera-alt', WhatsApp: 'chat', Email: 'email', Community: 'people' };
+        const interaction: { joined?: boolean; shared?: boolean } = await fetchCampaignInteraction(item.id).catch(() => ({}));
+        const storedCount = Number(item.joined) || 0;
+        const repairedCount = interaction.joined === true && storedCount === 0
+          ? (await updateCampaignInteraction(item.id, 'joined', true).catch(() => ({ count: 1 }))).count
+          : storedCount;
+        return {
+          ...item,
+          platformIcon: icons[item.platform] || 'campaign',
+          joined: repairedCount,
+          reach: item.reach || 0,
+          isJoined: interaction.joined === true,
+          isShared: interaction.shared === true,
+          color: colors[item.platform] || '#087D97',
+          isCustomIcon: item.platform === 'Instagram' || item.platform === 'WhatsApp',
+        };
+      })))
+      .then((items) => setCampaigns(items))
+      .catch(() => Alert.alert('Error', 'Campaigns could not be loaded.'))
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const pathname = usePathname();
   const navigation = getNavigationItems(pathname);
 
-  const handleShare = (campaignId: string) => {
+  const handleShareLocal = (campaignId: string) => {
     setCampaigns(prevCampaigns =>
       prevCampaigns.map(campaign =>
         campaign.id === campaignId
@@ -155,7 +130,7 @@ export default function CampaignsScreen() {
     }
   };
 
-  const handleVolunteer = (campaignId: string) => {
+  const handleVolunteerLocal = (campaignId: string) => {
     setCampaigns(prevCampaigns =>
       prevCampaigns.map(campaign =>
         campaign.id === campaignId
@@ -179,6 +154,45 @@ export default function CampaignsScreen() {
           : `Thank you for volunteering for the ${campaign.platform} campaign! 🙌`,
         [{ text: "OK" }]
       );
+    }
+  };
+
+  void handleShareLocal;
+  void handleVolunteerLocal;
+
+  const handleVolunteer = async (campaignId: string) => {
+    const campaign = campaigns.find(item => item.id === campaignId);
+    if (!campaign || pendingCampaignId === campaignId) return;
+    if (campaign.isJoined) {
+      Alert.alert('Already volunteered', 'You have already volunteered for this campaign.');
+      return;
+    }
+    setPendingCampaignId(campaignId);
+    try {
+      const result = await updateCampaignInteraction(campaignId, 'joined', true);
+      setCampaigns(items => items.map(item => item.id === campaignId ? { ...item, isJoined: true, joined: result.count } : item));
+      Alert.alert('Volunteered!', 'Thank you for volunteering!');
+    } catch (error: any) {
+      console.warn('Campaign participation failed:', error);
+      const code = String(error?.code || '');
+      const message = code.includes('operation-not-allowed') || code.includes('admin-restricted-operation')
+        ? 'Anonymous sign-in must be enabled in Firebase Authentication to volunteer.'
+        : code.includes('permission-denied')
+          ? 'Firebase denied this action. Please deploy the latest Firestore rules.'
+          : error?.message || 'Your campaign participation could not be saved.';
+      Alert.alert('Unable to volunteer', message);
+    } finally {
+      setPendingCampaignId(null);
+    }
+  };
+
+  const openCampaign = async (campaign: Campaign) => {
+    try {
+      const supported = await Linking.canOpenURL(campaign.campaignUrl);
+      if (!supported) throw new Error('Unsupported campaign link');
+      await Linking.openURL(campaign.campaignUrl);
+    } catch {
+      Alert.alert('Invalid link', 'This campaign link cannot be opened.');
     }
   };
 
@@ -207,6 +221,9 @@ export default function CampaignsScreen() {
         >
           <Text style={styles.heading}>Campaign Pack</Text>
           <Text style={styles.subheading}>Ready to share & spread</Text>
+
+          {isLoading && <ActivityIndicator size="large" color="#087D97" />}
+          {!isLoading && campaigns.length === 0 && <Text style={styles.emptyText}>No active campaigns yet.</Text>}
 
           <View style={styles.campaignsList}>
             {campaigns.map((campaign) => (
@@ -246,23 +263,24 @@ export default function CampaignsScreen() {
                   <View style={styles.statsRow}>
                     <View style={styles.statItem}>
                       <MaterialIcons name="groups" size={18} color="#666" />
-                      <Text style={styles.statText}>{campaign.joined} joined</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                      <MaterialIcons name="visibility" size={18} color="#666" />
-                      <Text style={styles.statText}>{campaign.reach} reach</Text>
+                      <Text style={styles.statText}>{campaign.joined} volunteers</Text>
                     </View>
                   </View>
                 </View>
 
                 {/* Action Buttons */}
                 <View style={styles.actionButtons}>
+                  <Pressable style={[styles.actionButton, styles.openButton]} onPress={() => openCampaign(campaign)}>
+                    <MaterialIcons name="open-in-new" size={20} color="#FFF" />
+                    <Text style={[styles.actionButtonText, { color: '#FFF' }]}>Open campaign</Text>
+                  </Pressable>
                   <Pressable
                     style={[
                       styles.actionButton,
+                      styles.hiddenAction,
                       campaign.isShared ? styles.sharedButton : styles.shareButton,
                     ]}
-                    onPress={() => handleShare(campaign.id)}
+                    disabled
                   >
                     <MaterialIcons 
                       name={campaign.isShared ? "check" : "share"} 
@@ -285,12 +303,13 @@ export default function CampaignsScreen() {
                       campaign.isJoined ? styles.volunteeredButton : styles.volunteerButton,
                     ]}
                     onPress={() => handleVolunteer(campaign.id)}
+                    disabled={pendingCampaignId === campaign.id || campaign.isJoined}
                   >
-                    <MaterialIcons 
+                    {pendingCampaignId === campaign.id ? <ActivityIndicator size="small" color={campaign.color} /> : <MaterialIcons 
                       name={campaign.isJoined ? "check" : "volunteer-activism"} 
                       size={20} 
                       color={campaign.isJoined ? "#FFF" : campaign.color} 
-                    />
+                    />}
                     <Text 
                       style={[
                         styles.actionButtonText,
@@ -430,6 +449,7 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   actionButton: {
@@ -445,6 +465,25 @@ const styles = StyleSheet.create({
   shareButton: {
     backgroundColor: "#FFF",
     borderColor: "#E7DDD2",
+  },
+  hiddenAction: {
+    display: "none",
+  },
+  campaignLinkRow: {
+    flexBasis: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  campaignLink: {
+    flex: 1,
+    fontSize: 13,
+    textDecorationLine: "underline",
+  },
+  openButton: {
+    backgroundColor: "#087D97",
+    borderColor: "#087D97",
   },
   sharedButton: {
     backgroundColor: "#087D97",
@@ -462,6 +501,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: "#333",
+  },
+  emptyText: {
+    paddingVertical: 32,
+    textAlign: "center",
+    color: "#666",
+    fontSize: 16,
   },
   bottomNav: {
     position: "absolute",

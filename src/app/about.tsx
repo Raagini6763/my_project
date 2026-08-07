@@ -1,5 +1,6 @@
+import { TranslatedText as Text } from '@/components/translated-text';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AboutScreen() {
@@ -10,6 +11,9 @@ export default function AboutScreen() {
         <Text style={styles.body}>
           Awaaz helps communities share local stories, build campaigns, and turn awareness into action.
         </Text>
+        <Pressable style={styles.privacyButton} onPress={() => router.push('/privacy' as any)}>
+          <Text style={styles.privacyText}>Privacy Policy</Text>
+        </Pressable>
         <Pressable style={styles.button} onPress={() => router.back()}>
           <Text style={styles.buttonText}>Go back</Text>
         </Pressable>
@@ -23,6 +27,8 @@ const styles = StyleSheet.create({
   content: { flex: 1, padding: 24, justifyContent: 'center' },
   title: { fontSize: 30, fontWeight: '800', color: '#1D2530', marginBottom: 16 },
   body: { fontSize: 17, lineHeight: 26, color: '#5B6470', marginBottom: 28 },
+  privacyButton: { marginBottom: 18 },
+  privacyText: { color: '#087D97', fontSize: 16, fontWeight: '700' },
   button: { alignSelf: 'flex-start', backgroundColor: '#087D97', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
   buttonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 });

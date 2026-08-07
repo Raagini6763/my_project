@@ -5,7 +5,9 @@ node_modules/
 
 # Expo
 .expo/
+.wrangler-config/
 dist/
+.dist/
 web-build/
 expo-env.d.ts
 
@@ -23,6 +25,7 @@ expo-env.d.ts
 
 # debug
 npm-debug.*
+firebase-debug.log
 yarn-debug.*
 yarn-error.*
 
@@ -31,7 +34,14 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
+.env.*
+!.env.example
 .env*.local
+
+# Server credentials must never be bundled into the Expo application
+src/services/firestore.json
+**/service-account*.json
 
 # typescript
 *.tsbuildinfo

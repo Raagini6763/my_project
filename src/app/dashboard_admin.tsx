@@ -1,8 +1,11 @@
-import { createCampaign, fetchAdminProfile, fetchCampaigns, fetchPendingStories, updateStoryStatus } from '@/services/firebaseService';
+import { TranslatedText as Text } from '@/components/translated-text';
+import { TranslatedTextInput as TextInput } from '@/components/translated-text-input';
+import { createCampaign, fetchAdminProfile, fetchCampaigns, fetchPendingStories, logoutAdmin, subscribeToAdminSession, updateAdminCredentials, updateStoryStatus } from '@/services/firebaseService';
+import { normalizeCampaignUrl } from '@/utils/validation';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface PendingStory {
@@ -23,15 +26,24 @@ interface Campaign {
   posts: number;
   frequency: string;
   status: 'active' | 'draft' | 'completed';
+  campaignUrl: string;
 }
 
 export default function DashboardAdminScreen() {
   const [activeTab, setActiveTab] = useState<'stories' | 'campaigns'>('stories');
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isCampaignSuccessVisible, setIsCampaignSuccessVisible] = useState(false);
   const [campaignTitle, setCampaignTitle] = useState('');
   const [campaignPlatform, setCampaignPlatform] = useState('');
   const [campaignPosts, setCampaignPosts] = useState('');
   const [campaignFrequency, setCampaignFrequency] = useState('');
+  const [campaignUrl, setCampaignUrl] = useState('');
+  const [isCredentialsModalVisible, setIsCredentialsModalVisible] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [isUpdatingCredentials, setIsUpdatingCredentials] = useState(false);
 
   const [pendingStories, setPendingStories] = useState<PendingStory[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -50,7 +62,14 @@ export default function DashboardAdminScreen() {
       setAdminName(adminProfile?.name || 'Admin');
     };
 
-    loadData();
+    const unsubscribe = subscribeToAdminSession((isAdmin) => {
+      if (!isAdmin) {
+        router.replace('/login');
+        return;
+      }
+      loadData().catch(() => Alert.alert('Error', 'Admin data could not be loaded.'));
+    });
+    return unsubscribe;
   }, []);
 
   const handleApprove = async (storyId: string) => {
@@ -87,8 +106,14 @@ export default function DashboardAdminScreen() {
   };
 
   const handleCreateCampaign = async () => {
-    if (!campaignTitle || !campaignPlatform || !campaignPosts || !campaignFrequency) {
+    if (!campaignTitle.trim() || !campaignPlatform || !campaignPosts || !campaignFrequency.trim() || !campaignUrl.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    const normalizedUrl = normalizeCampaignUrl(campaignUrl);
+    if (!normalizedUrl) {
+      Alert.alert('Error', 'Please enter a valid campaign link.');
       return;
     }
 
@@ -97,6 +122,7 @@ export default function DashboardAdminScreen() {
       platform: campaignPlatform,
       posts: parseInt(campaignPosts, 10),
       frequency: campaignFrequency,
+      campaignUrl: normalizedUrl,
     });
 
     if (created) {
@@ -105,11 +131,67 @@ export default function DashboardAdminScreen() {
       setCampaignPlatform('');
       setCampaignPosts('');
       setCampaignFrequency('');
+      setCampaignUrl('');
       setIsModalVisible(false);
-      Alert.alert('Success', 'Campaign created successfully!');
+      setIsCampaignSuccessVisible(true);
     } else {
       Alert.alert('Error', 'Could not create campaign right now.');
     }
+  };
+
+  const closeCredentialsModal = () => {
+    setIsCredentialsModalVisible(false);
+    setCurrentPassword('');
+    setNewEmail('');
+    setNewPassword('');
+    setConfirmNewPassword('');
+  };
+
+  const handleUpdateCredentials = async () => {
+    if (!currentPassword) return Alert.alert('Error', 'Enter your current password.');
+    if (!newEmail.trim() && !newPassword) return Alert.alert('Error', 'Enter a new email or password.');
+    if (newPassword && newPassword.length < 6) return Alert.alert('Error', 'The new password must be at least 6 characters.');
+    if (newPassword !== confirmNewPassword) return Alert.alert('Error', 'The new passwords do not match.');
+
+    try {
+      setIsUpdatingCredentials(true);
+      await updateAdminCredentials({ currentPassword, newEmail: newEmail.trim(), newPassword });
+      closeCredentialsModal();
+      Alert.alert('Success', 'Admin credentials updated successfully.');
+    } catch (error: any) {
+      const messages: Record<string, string> = {
+        'auth/invalid-credential': 'The current password is incorrect.',
+        'auth/wrong-password': 'The current password is incorrect.',
+        'auth/email-already-in-use': 'That email address is already in use.',
+        'auth/invalid-email': 'Enter a valid email address.',
+        'auth/weak-password': 'Choose a stronger password.',
+      };
+      Alert.alert('Update failed', messages[error?.code] || error?.message || 'Could not update admin credentials.');
+    } finally {
+      setIsUpdatingCredentials(false);
+    }
+  };
+
+  const performLogout = async () => {
+    try {
+      await logoutAdmin();
+      router.replace('/');
+    } catch (error) {
+      console.warn('Admin logout failed:', error);
+      Alert.alert('Logout failed', 'Could not log out. Please try again.');
+    }
+  };
+
+  const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm('Are you sure you want to logout?')) void performLogout();
+      return;
+    }
+
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: () => void performLogout() },
+    ]);
   };
 
   const getStatusColor = (status: string) => {
@@ -149,25 +231,15 @@ export default function DashboardAdminScreen() {
             <Text style={styles.greeting}>Welcome, {adminName}</Text>
             <Text style={styles.subGreeting}>Manage stories & campaigns</Text>
           </View>
-          <Pressable 
-            style={styles.logoutButton}
-            onPress={() => {
-              Alert.alert(
-                'Logout',
-                'Are you sure you want to logout?',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  { 
-                    text: 'Logout', 
-                    style: 'destructive',
-                    onPress: () => router.push('/') 
-                  },
-                ]
-              );
-            }}
-          >
-            <MaterialIcons name="logout" size={24} color="#666" />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable style={styles.logoutButton} accessibilityLabel="Update admin credentials" onPress={() => setIsCredentialsModalVisible(true)}>
+              <MaterialIcons name="manage-accounts" size={25} color="#087D97" />
+            </Pressable>
+            <Pressable style={styles.logoutButton} onPress={handleLogout}
+            >
+              <MaterialIcons name="logout" size={24} color="#666" />
+            </Pressable>
+          </View>
         </View>
 
         {/* Stats Cards */}
@@ -390,6 +462,19 @@ export default function DashboardAdminScreen() {
                   </View>
                 </View>
 
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalLabel}>Campaign link</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="https://example.com/campaign"
+                    placeholderTextColor="#999"
+                    keyboardType="url"
+                    autoCapitalize="none"
+                    value={campaignUrl}
+                    onChangeText={setCampaignUrl}
+                  />
+                </View>
+
                 <View style={styles.modalButtons}>
                   <Pressable 
                     style={[styles.modalButton, styles.modalCancelButton]}
@@ -402,6 +487,61 @@ export default function DashboardAdminScreen() {
                     onPress={handleCreateCampaign}
                   >
                     <Text style={styles.modalSaveText}>Create</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal visible={isCampaignSuccessVisible} animationType="fade" transparent onRequestClose={() => setIsCampaignSuccessVisible(false)}>
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalContent, styles.successModalContent]}>
+              <View style={styles.successIcon}>
+                <MaterialIcons name="check" size={48} color="#FFF" />
+              </View>
+              <Text style={styles.successTitle}>Campaign created</Text>
+              <Text style={styles.successMessage}>The campaign was created successfully and is now visible to users.</Text>
+              <Pressable style={styles.successButton} onPress={() => setIsCampaignSuccessVisible(false)}>
+                <Text style={styles.successButtonText}>Done</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal visible={isCredentialsModalVisible} animationType="slide" transparent onRequestClose={closeCredentialsModal}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Update admin credentials</Text>
+                <Pressable onPress={closeCredentialsModal}>
+                  <MaterialIcons name="close" size={24} color="#333" />
+                </Pressable>
+              </View>
+              <View style={styles.modalForm}>
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalLabel}>Current password</Text>
+                  <TextInput style={styles.modalInput} value={currentPassword} onChangeText={setCurrentPassword} secureTextEntry autoCapitalize="none" />
+                </View>
+
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalLabel}>New email (optional)</Text>
+                  <TextInput style={styles.modalInput} value={newEmail} onChangeText={setNewEmail} keyboardType="email-address" autoCapitalize="none" />
+                </View>
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalLabel}>New password (optional)</Text>
+                  <TextInput style={styles.modalInput} value={newPassword} onChangeText={setNewPassword} secureTextEntry autoCapitalize="none" />
+                </View>
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalLabel}>Confirm new password</Text>
+                  <TextInput style={styles.modalInput} value={confirmNewPassword} onChangeText={setConfirmNewPassword} secureTextEntry autoCapitalize="none" />
+                </View>
+                <View style={styles.modalButtons}>
+                  <Pressable style={[styles.modalButton, styles.modalCancelButton]} onPress={closeCredentialsModal} disabled={isUpdatingCredentials}>
+                    <Text style={styles.modalCancelText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable style={[styles.modalButton, styles.modalSaveButton, isUpdatingCredentials && styles.disabledButton]} onPress={handleUpdateCredentials} disabled={isUpdatingCredentials}>
+                    <Text style={styles.modalSaveText}>{isUpdatingCredentials ? 'Updating...' : 'Update'}</Text>
                   </Pressable>
                 </View>
               </View>
@@ -441,6 +581,13 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     padding: 8,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -660,6 +807,44 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 20,
     padding: 24,
+  },
+  successModalContent: {
+    alignItems: 'center',
+  },
+  successIcon: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1B8A43',
+    marginBottom: 18,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1D2530',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  successMessage: {
+    fontSize: 16,
+    lineHeight: 23,
+    color: '#5B6470',
+    textAlign: 'center',
+    marginBottom: 22,
+  },
+  successButton: {
+    width: '100%',
+    backgroundColor: '#087D97',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  successButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
   modalHeader: {
     flexDirection: 'row',

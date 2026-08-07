@@ -1,6 +1,7 @@
+import { TranslatedText as Text } from '@/components/translated-text';
 import { fetchApprovedStories } from '@/services/firebaseService';
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { ResizeMode, Video } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { router, useFocusEffect, usePathname } from "expo-router";
 import { useCallback, useState } from "react";
 import {
@@ -10,12 +11,16 @@ import {
     Pressable,
     ScrollView,
     StyleSheet,
-    Text,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const filters = ["Podcast", "Reel", "Voice Note", "Article", "Photo Essay"];
+const filters = ["All", "Podcast", "Reel", "Voice Note", "Article", "Photo Essay"];
+
+const StoryVideo = ({ uri, style }: { uri: string; style: any }) => {
+  const player = useVideoPlayer(uri);
+  return <VideoView player={player} style={style} nativeControls fullscreenOptions={{ enable: true }} />;
+};
 
 const initialStories = [
   {
@@ -80,7 +85,7 @@ const getNavigationItems = (pathname: string) => [
 ];
 
 export default function StoriesScreen() {
-  const [selectedFilter, setSelectedFilter] = useState("Podcast");
+  const [selectedFilter, setSelectedFilter] = useState("All");
   const [stories, setStories] = useState<any[]>(initialStories);
   const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
@@ -106,7 +111,7 @@ export default function StoriesScreen() {
   );
 
   const filteredStories = stories.filter((story) =>
-    selectedFilter === ""
+    selectedFilter === "All"
       ? true
       : story.type === selectedFilter
   );
@@ -146,29 +151,6 @@ export default function StoriesScreen() {
           ? `You have left the campaign: "${story.title}"`
           : `You have successfully joined the campaign: "${story.title}"`,
         [{ text: "OK" }]
-      );
-    }
-  };
-
-  const handleShare = (storyId: string) => {
-    const story = stories.find(s => s.id === storyId);
-    if (story) {
-      Alert.alert(
-        "Share Story",
-        `Share "${story.title}" with your network?`,
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
-          },
-          {
-            text: "Share",
-            onPress: () => {
-              // In a real app, you'd use the Share API
-              Alert.alert("Shared!", `"${story.title}" has been shared.`, [{ text: "OK" }]);
-            },
-          },
-        ]
       );
     }
   };
@@ -292,12 +274,7 @@ export default function StoriesScreen() {
                 ) : null}
 
                 {story.mediaUrl && story.mediaType === 'video' ? (
-                  <Video
-                    source={{ uri: story.mediaUrl }}
-                    style={styles.storyMedia}
-                    useNativeControls
-                    resizeMode={ResizeMode.CONTAIN}
-                  />
+                  <StoryVideo uri={story.mediaUrl} style={styles.storyMedia} />
                 ) : null}
 
                 {story.mediaUrl && story.mediaType === 'audio' ? (
@@ -344,14 +321,6 @@ export default function StoriesScreen() {
                       <Text style={styles.statText}>{story.volunteers}</Text>
                     </View>
 
-                    <View style={styles.iconText}>
-                      <MaterialIcons
-                        name="visibility"
-                        size={18}
-                        color="#555"
-                      />
-                      <Text style={styles.statText}>{story.views}</Text>
-                    </View>
                   </View>
                 </View>
 
@@ -375,13 +344,6 @@ export default function StoriesScreen() {
                     >
                       {story.isJoined ? "Joined ✓" : "Join"}
                     </Text>
-                  </Pressable>
-
-                  <Pressable 
-                    style={styles.button}
-                    onPress={() => handleShare(story.id)}
-                  >
-                    <Text style={styles.buttonText}>Share</Text>
                   </Pressable>
 
                   <Pressable 

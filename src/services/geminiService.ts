@@ -1,112 +1,45 @@
-const getApiKey = () => {
-  const key = process.env.EXPO_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
-  return key.trim();
+type RefineResult = {
+  needsRefinement: boolean;
+  refinedText: string;
 };
 
-const buildGeminiUrl = () => {
-  const apiKey = getApiKey();
-  if (!apiKey) return null;
-  return `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+type TranslateResult = {
+  translations: Record<string, string>;
 };
 
-const normalizeGeminiText = (text: string) => {
-  if (!text) return '';
-  return text
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/```$/i, '')
-    .trim();
+const WORKER_URL = process.env.EXPO_PUBLIC_GEMINI_WORKER_URL
+  || 'https://gemini-worker.awaaz.workers.dev';
+
+const callWorker = async <T>(payload: Record<string, unknown>): Promise<T> => {
+  const response = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.error || 'The language service is unavailable.');
+  return data as T;
 };
 
-const parseJsonFromText = (text: string) => {
-  const normalized = normalizeGeminiText(text);
-  const match = normalized.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  try {
-    return JSON.parse(match[0]);
-  } catch (error) {
-    return null;
-  }
+export const refineStoryText = async (text: string): Promise<RefineResult> => {
+  const original = text?.trim() || '';
+  if (!original) return { needsRefinement: false, refinedText: original };
+  const result = await callWorker<Partial<RefineResult>>({ operation: 'refine', text: original });
+  return {
+    needsRefinement: result.needsRefinement === true,
+    refinedText: typeof result.refinedText === 'string' && result.refinedText.trim()
+      ? result.refinedText.trim()
+      : original,
+  };
 };
 
-export const refineStoryText = async (text: string) => {
-  if (!text?.trim()) {
-    return { needsRefinement: false, refinedText: text };
-  }
-
-  const url = buildGeminiUrl();
-  if (!url) {
-    return { needsRefinement: false, refinedText: text };
-  }
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: `Review the following community story. If it already reads clearly and respectfully, return exactly: NO_CHANGE. Otherwise return a polished version with improved grammar and clarity.\n\nStory:\n${text}`,
-              },
-            ],
-          },
-        ],
-      }),
-    });
-
-    const data = await response.json();
-    const resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const cleaned = normalizeGeminiText(resultText);
-
-    if (!cleaned || cleaned.toUpperCase().includes('NO_CHANGE')) {
-      return { needsRefinement: false, refinedText: text };
-    }
-
-    return { needsRefinement: true, refinedText: cleaned };
-  } catch (error) {
-    console.warn('Gemini refinement failed:', error);
-    return { needsRefinement: false, refinedText: text };
-  }
-};
-
-export const translateCatalog = async (catalog: Record<string, string>, targetLanguage: string) => {
-  if (!targetLanguage || targetLanguage === 'English') {
-    return catalog;
-  }
-
-  const url = buildGeminiUrl();
-  if (!url) {
-    return catalog;
-  }
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: `Translate the following JSON object values into ${targetLanguage}. Return only valid JSON with the same keys and translated values.\n\n${JSON.stringify(catalog)}`,
-              },
-            ],
-          },
-        ],
-      }),
-    });
-
-    const data = await response.json();
-    const resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const parsed = parseJsonFromText(resultText);
-    if (parsed && typeof parsed === 'object') {
-      return { ...catalog, ...parsed };
-    }
-  } catch (error) {
-    console.warn('Gemini translation failed:', error);
-  }
-
-  return catalog;
+export const translateCatalog = async (
+  catalog: Record<string, string>,
+  targetLanguage: string
+): Promise<Record<string, string>> => {
+  if (!targetLanguage || targetLanguage === 'English') return catalog;
+  const result = await callWorker<Partial<TranslateResult>>({ operation: 'translate', catalog, targetLanguage });
+  return result.translations && typeof result.translations === 'object'
+    ? { ...catalog, ...result.translations }
+    : catalog;
 };

@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin' &&
+        get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.status == 'active';
+    }
+    function validCampaignInteractionUpdate() {
+      let oldJoined = resource.data.get('joined', 0);
+      let oldShared = resource.data.get('shared', 0);
+      let newJoined = request.resource.data.get('joined', 0);
+      let newShared = request.resource.data.get('shared', 0);
+      return signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joined', 'shared', 'updatedAt'])
+        && newJoined >= 0
+        && newShared >= 0
+        && (newJoined - oldJoined) >= -1
+        && (newJoined - oldJoined) <= 1
+        && (newShared - oldShared) >= -1
+        && (newShared - oldShared) <= 1;
+    }
+
+    match /stories/{storyId} {
+      allow read: if resource.data.status == 'approved' || isAdmin();
+      allow create: if signedIn()
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.description is string
+        && request.resource.data.description.size() > 0;
+      allow update, delete: if isAdmin();
+    }
+
+    match /campaigns/{campaignId} {
+      allow read: if resource.data.status == 'active' || isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || validCampaignInteractionUpdate();
+    }
+
+    match /campaignInteractions/{interactionId} {
+      allow read: if signedIn() && interactionId.matches('.*_' + request.auth.uid);
+      allow create, update: if signedIn()
+        && interactionId.matches('.*_' + request.auth.uid)
+        && request.resource.data.userId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /admins/{adminId} {
+      allow read: if signedIn() && request.auth.uid == adminId;
+      allow update: if isAdmin() && request.auth.uid == adminId
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.status == resource.data.status;
+      allow create, delete: if false;
+    }
+  }
+}
