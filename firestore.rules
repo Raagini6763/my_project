@@ -58,10 +58,17 @@ service cloud.firestore {
 
     match /admins/{adminId} {
       allow read: if signedIn() && request.auth.uid == adminId;
+      allow create: if signedIn()
+        && request.auth.uid == adminId
+        && request.auth.token.email in ['test@gmail.com', 'raagini@gmail.com']
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == 'admin'
+        && request.resource.data.status == 'active';
       allow update: if isAdmin() && request.auth.uid == adminId
         && request.resource.data.role == resource.data.role
         && request.resource.data.status == resource.data.status;
-      allow create, delete: if false;
+      allow delete: if false;
     }
   }
 }

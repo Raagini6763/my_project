@@ -58,7 +58,7 @@ export default function UploadScreen() {
   const formats = [
     { id: "writing", label: "Writing", icon: "edit" },
     { id: "video", label: "Video/Reel", icon: "videocam" },
-    { id: "podcast", label: "Podcast", icon: "mic" },
+    { id: "podcast", label: "Voice Story", icon: "mic" },
     { id: "photos", label: "Photos", icon: "photo-camera" },
   ];
 
@@ -128,7 +128,7 @@ export default function UploadScreen() {
       } else {
         Alert.alert(
           "Permission Denied",
-          "Please allow microphone access to record podcasts.",
+          "Please allow microphone access to record your voice story.",
           [{ text: "OK" }]
         );
       }
@@ -147,7 +147,7 @@ export default function UploadScreen() {
       setUploadedMediaType('audio');
       Alert.alert(
         "Recording Complete",
-        "Your podcast has been recorded successfully!",
+        "Your voice story has been recorded successfully!",
         [{ text: "OK" }]
       );
     }
@@ -227,7 +227,7 @@ export default function UploadScreen() {
         description: refinedDescription,
         location,
         category,
-        storyType: format === 'writing' ? 'Article' : format === 'podcast' ? 'Podcast' : format === 'video' ? 'Reel' : 'Photo Essay',
+        storyType: format === 'writing' ? 'Article' : format === 'podcast' ? 'Voice Story' : format === 'video' ? 'Reel' : 'Photo Essay',
         authorEmail: 'anonymous@citzny.app',
         mediaUri: uploadedMediaUri,
         mediaType: uploadedMediaType,

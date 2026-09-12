@@ -48,6 +48,11 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
+const bootstrapAdminEmails = new Set([
+  "test@gmail.com",
+  "raagini@gmail.com",
+]);
+
 const ensureUser = async () =>
   auth.currentUser || (await signInAnonymously(auth)).user;
 
@@ -207,7 +212,7 @@ export const fetchApprovedStories = async () => {
       .map((item) => ({
         id: item.id,
         title: item.title,
-        type: item.type || "Article",
+        type: item.type === "Podcast" ? "Voice Story" : item.type || "Article",
         description: item.description || "No description provided.",
         status: "Approved",
         statusColor: "#DCF8E4",
@@ -234,7 +239,29 @@ export const loginAdmin = async ({ email, password }) => {
     email.trim(),
     password,
   );
-  const adminRecord = await getDoc(doc(db, "admins", credential.user.uid));
+  const adminRef = doc(db, "admins", credential.user.uid);
+  let adminRecord = await getDoc(adminRef);
+
+  // The initial admin profile is created after the pre-authorized account
+  // successfully authenticates. Firestore rules enforce the same email and
+  // exact role/status values, so no unauthenticated user can grant themselves
+  // admin access.
+  if (
+    !adminRecord.exists() &&
+    credential.user.email &&
+    bootstrapAdminEmails.has(credential.user.email)
+  ) {
+    await setDoc(adminRef, {
+      uid: credential.user.uid,
+      name: credential.user.email === "raagini@gmail.com" ? "Raagini" : "Test Admin",
+      email: credential.user.email,
+      role: "admin",
+      status: "active",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    adminRecord = await getDoc(adminRef);
+  }
 
   if (
     !adminRecord.exists() ||

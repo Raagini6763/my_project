@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const filters = ["All", "Podcast", "Reel", "Article", "Photo Essay"];
+const filters = ["All", "Article", "Reel", "Photo Essay", "Voice Story", "Podcast"];
 
 const StoryVideo = ({ uri, style }: { uri: string; style: any }) => {
   const player = useVideoPlayer(uri);
@@ -61,11 +61,10 @@ export default function StoriesScreen() {
     }, [])
   );
 
-  const filteredStories = stories.filter((story) =>
-    selectedFilter === "All"
-      ? true
-      : story.type === selectedFilter
-  );
+  const filteredStories = stories.filter((story) => {
+    if (selectedFilter === "Podcast") return false;
+    return selectedFilter === "All" || story.type === selectedFilter;
+  });
 
   const handleLike = (storyId: string) => {
     setStories(prevStories =>
