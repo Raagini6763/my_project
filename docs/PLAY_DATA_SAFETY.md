@@ -1,4 +1,4 @@
-# Awaaz Google Play data-safety checklist
+# CitznY Google Play data-safety checklist
 
 Use this as a review aid when completing Play Console. Verify every answer against the final production build and current Google policy.
 

@@ -1,34 +1,23 @@
 import { TranslatedText as Text } from '@/components/translated-text';
+import { UserBottomNav } from '@/components/user-bottom-nav';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function AboutScreen() {
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>About Awaaz</Text>
-        <Text style={styles.body}>
-          Awaaz helps communities share local stories, build campaigns, and turn awareness into action.
-        </Text>
-        <Pressable style={styles.privacyButton} onPress={() => router.push('/privacy' as any)}>
-          <Text style={styles.privacyText}>Privacy Policy</Text>
-        </Pressable>
-        <Pressable style={styles.button} onPress={() => router.back()}>
-          <Text style={styles.buttonText}>Go back</Text>
-        </Pressable>
-      </View>
-    </SafeAreaView>
-  );
-}
+const values = [
+  ['Youth-First', 'Built by and for young changemakers'],
+  ['Grassroots', 'Rooted in community voices and local action'],
+  ['Transparent', 'Clear curation process and admin feedback'],
+  ['Inclusive', 'Multi-language support and accessible design'],
+];
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FCF9F5' },
-  content: { flex: 1, padding: 24, justifyContent: 'center' },
-  title: { fontSize: 30, fontWeight: '800', color: '#1D2530', marginBottom: 16 },
-  body: { fontSize: 17, lineHeight: 26, color: '#5B6470', marginBottom: 28 },
-  privacyButton: { marginBottom: 18 },
-  privacyText: { color: '#087D97', fontSize: 16, fontWeight: '700' },
-  button: { alignSelf: 'flex-start', backgroundColor: '#087D97', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
-  buttonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-});
+export default function AboutScreen() {
+  return <View style={styles.screen}><SafeAreaView edges={['top']} style={styles.safe}><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <Text style={styles.title}>About Us</Text><Text style={styles.subtitle}>Learn about our mission</Text>
+    <View style={styles.card}><Text style={styles.cardTitle}>Our Mission</Text><Text style={styles.body}>CitznY empowers young people in rural and semi-urban communities to share their stories, build awareness campaigns, and drive real civic change through collective action.</Text></View>
+    <View style={[styles.card, styles.vision]}><Text style={styles.cardTitle}>Our Vision</Text><Text style={styles.body}>A world where youth voices shape local governance and grassroots issues become impossible to ignore.</Text></View>
+    <Text style={styles.valuesTitle}>Our Values</Text>{values.map(([title, body]) => <View key={title} style={styles.value}><Text style={styles.valueTitle}>{title}</Text><Text style={styles.valueBody}>{body}</Text></View>)}
+    <Pressable onPress={() => router.push('/privacy')} style={styles.privacy}><Text style={styles.privacyText}>Read our Privacy Policy</Text></Pressable>
+  </ScrollView><UserBottomNav /></SafeAreaView></View>;
+}
+const styles = StyleSheet.create({ screen: { flex: 1, backgroundColor: '#FCF9F5' }, safe: { flex: 1 }, content: { padding: 20, paddingBottom: 30 }, title: { fontSize: 28, fontWeight: '800', color: '#161C27' }, subtitle: { color: '#40506A', marginTop: 4, marginBottom: 20 }, card: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2D8CB', borderRadius: 20, padding: 20, marginBottom: 16 }, vision: { backgroundColor: '#E3EFF0', borderColor: '#B4D3D6' }, cardTitle: { fontSize: 18, fontWeight: '800', color: '#161C27', marginBottom: 12 }, body: { fontSize: 16, lineHeight: 25, color: '#31435D' }, valuesTitle: { fontSize: 17, fontWeight: '800', color: '#161C27', margin: 5 }, value: { backgroundColor: '#F7F4F0', borderRadius: 17, padding: 16, marginTop: 10 }, valueTitle: { color: '#161C27', fontSize: 16, fontWeight: '700' }, valueBody: { color: '#40506A', fontSize: 13, marginTop: 4 }, privacy: { alignItems: 'center', padding: 18 }, privacyText: { color: '#087D97', fontWeight: '700' } });

@@ -1,17 +1,17 @@
 {
   "expo": {
-    "name": "Awaaz",
-    "slug": "awaaz",
+    "name": "CitznY",
+    "slug": "citzny",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "awaaz",
+    "scheme": "citzny",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
     },
     "android": {
-      "package": "com.awaaz.app",
+      "package": "com.citzny.app",
       "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -35,15 +35,15 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Awaaz uses your photos only when you choose media for a community story.",
-          "cameraPermission": "Awaaz uses your camera only when you capture a photo or video for a community story.",
+          "photosPermission": "CitznY uses your photos only when you choose media for a community story.",
+          "cameraPermission": "CitznY uses your camera only when you capture a photo or video for a community story.",
           "microphonePermission": false
         }
       ],
       [
         "expo-audio",
         {
-          "microphonePermission": "Awaaz uses your microphone only when you record a podcast story.",
+          "microphonePermission": "CitznY uses your microphone only when you record a podcast story.",
           "recordAudioAndroid": true,
           "enableBackgroundRecording": false,
           "enableBackgroundPlayback": false
@@ -57,7 +57,10 @@
           "imageWidth": 76
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-image",
+      "expo-video",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

@@ -228,7 +228,7 @@ export default function UploadScreen() {
         location,
         category,
         storyType: format === 'writing' ? 'Article' : format === 'podcast' ? 'Podcast' : format === 'video' ? 'Reel' : 'Photo Essay',
-        authorEmail: 'anonymous@awaaz.com',
+        authorEmail: 'anonymous@citzny.app',
         mediaUri: uploadedMediaUri,
         mediaType: uploadedMediaType,
       });

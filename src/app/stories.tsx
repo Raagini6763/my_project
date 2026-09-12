@@ -1,5 +1,5 @@
 import { TranslatedText as Text } from '@/components/translated-text';
-import { fetchApprovedStories } from '@/services/firebaseService';
+import { fetchApprovedStories, fetchPublishedPodcasts } from '@/services/firebaseService';
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { router, useFocusEffect, usePathname } from "expo-router";
@@ -15,66 +15,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const filters = ["All", "Podcast", "Reel", "Voice Note", "Article", "Photo Essay"];
+const filters = ["All", "Podcast", "Reel", "Article", "Photo Essay"];
 
 const StoryVideo = ({ uri, style }: { uri: string; style: any }) => {
   const player = useVideoPlayer(uri);
   return <VideoView player={player} style={style} nativeControls fullscreenOptions={{ enable: true }} />;
 };
-
-const initialStories = [
-  {
-    id: "1",
-    title: "Broken streetlights near school",
-    type: "Podcast",
-    description:
-      "Dark roads putting students at risk during evening classes",
-    status: "Needs awareness",
-    statusColor: "#FAD9DC",
-    statusText: "#B31217",
-    location: "Wardha, MH",
-    likes: 47,
-    volunteers: 12,
-    views: 188,
-    isLiked: false,
-    isJoined: false,
-    isVolunteered: false,
-  },
-  {
-    id: "2",
-    title: "Unsafe bus stop for girls",
-    type: "Reel",
-    description:
-      "No shelter or lighting at main bus stop near college",
-    status: "Campaign live",
-    statusColor: "#FFF1B5",
-    statusText: "#A05A00",
-    location: "Nagpur, MH",
-    likes: 89,
-    volunteers: 28,
-    views: 356,
-    isLiked: false,
-    isJoined: false,
-    isVolunteered: false,
-  },
-  {
-    id: "3",
-    title: "Water shortage in slum area",
-    type: "Article",
-    description:
-      "Residents walk over 2 km every day for clean drinking water.",
-    status: "Solved",
-    statusColor: "#DCF8E4",
-    statusText: "#1B8A43",
-    location: "Mumbai, MH",
-    likes: 132,
-    volunteers: 45,
-    views: 501,
-    isLiked: false,
-    isJoined: false,
-    isVolunteered: false,
-  },
-];
 
 const getNavigationItems = (pathname: string) => [
   { label: "Home", icon: "home" as const, route: "/", active: pathname === "/" || pathname === "/dashboard" },
@@ -86,7 +32,8 @@ const getNavigationItems = (pathname: string) => [
 
 export default function StoriesScreen() {
   const [selectedFilter, setSelectedFilter] = useState("All");
-  const [stories, setStories] = useState<any[]>(initialStories);
+  const [stories, setStories] = useState<any[]>([]);
+  const [podcasts, setPodcasts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
   const navigation = getNavigationItems(pathname);
@@ -96,9 +43,13 @@ export default function StoriesScreen() {
       let active = true;
     const loadStories = async () => {
       setIsLoading(true);
-      const approvedStories = await fetchApprovedStories();
+      const [approvedStories, publishedPodcasts] = await Promise.all([
+        fetchApprovedStories(),
+        fetchPublishedPodcasts().catch(() => []),
+      ]);
       if (active) {
         setStories(approvedStories);
+        setPodcasts(publishedPodcasts);
         setIsLoading(false);
       }
     };
@@ -190,8 +141,24 @@ export default function StoriesScreen() {
           <Text style={styles.heading}>Browse Stories</Text>
 
           <Text style={styles.subheading}>
-            {isLoading ? 'Loading approved stories...' : 'Stories by media type'}
+            {isLoading ? 'Loading stories...' : 'Stories by media type'}
           </Text>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Track my story review"
+            style={styles.reviewButton}
+            onPress={() => router.push('/story-review' as any)}
+          >
+            <View style={styles.reviewIcon}>
+              <MaterialIcons name="track-changes" size={24} color="#087D97" />
+            </View>
+            <View style={styles.reviewCopy}>
+              <Text style={styles.reviewTitle}>Track My Story Review</Text>
+              <Text style={styles.reviewSubtitle}>See the status of stories submitted from this device</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={26} color="#087D97" />
+          </Pressable>
 
           {/* FILTERS */}
 
@@ -228,8 +195,24 @@ export default function StoriesScreen() {
           {/* STORIES */}
 
           <View style={{ marginTop: 22 }}>
-            {filteredStories.length === 0 ? (
-              <Text style={styles.emptyState}>No approved stories yet.</Text>
+            {selectedFilter === 'Podcast' && podcasts.map((podcast) => (
+              <View key={`official-${podcast.id}`} style={[styles.card, styles.officialPodcastCard]}>
+                <View style={styles.officialPodcastHeader}>
+                  <View style={styles.podcastIcon}><MaterialIcons name="podcasts" size={25} color="#087D97" /></View>
+                  <View style={styles.officialPodcastCopy}>
+                    <Text style={styles.officialLabel}>CitznY Podcast</Text>
+                    <Text style={styles.title}>{podcast.title}</Text>
+                  </View>
+                </View>
+                <Text style={styles.description}>{podcast.description}</Text>
+                <Pressable style={styles.listenButton} onPress={() => Linking.openURL(podcast.listenUrl)}>
+                  <MaterialIcons name="play-arrow" size={21} color="#FFF" />
+                  <Text style={styles.listenButtonText}>Listen Now</Text>
+                </Pressable>
+              </View>
+            ))}
+            {filteredStories.length === 0 && !(selectedFilter === 'Podcast' && podcasts.length > 0) ? (
+              <Text style={styles.emptyState}>No stories yet.</Text>
             ) : filteredStories.map((story) => (
               <View key={story.id} style={styles.card}>
                 {/* Title Row */}
@@ -238,23 +221,6 @@ export default function StoriesScreen() {
                     {story.title}
                   </Text>
 
-                  <View
-                    style={[
-                      styles.badge,
-                      {
-                        backgroundColor: story.statusColor,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.badgeText,
-                        { color: story.statusText }
-                      ]}
-                    >
-                      {story.status}
-                    </Text>
-                  </View>
                 </View>
 
                 {/* TYPE */}
@@ -427,6 +393,39 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: "#666",
   },
+  reviewButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 18,
+    padding: 15,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#B9D9DC",
+    backgroundColor: "#E8F4F5",
+  },
+  reviewIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF",
+  },
+  reviewCopy: {
+    flex: 1,
+  },
+  reviewTitle: {
+    color: "#1D2530",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  reviewSubtitle: {
+    color: "#5B6470",
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 3,
+  },
   emptyState: {
     marginTop: 24,
     textAlign: "center",
@@ -460,6 +459,47 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 20,
   },
+  officialPodcastCard: {
+    borderColor: "#B9D9DC",
+    backgroundColor: "#F5FBFB",
+  },
+  officialPodcastHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  podcastIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: "#E1F1F3",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  officialPodcastCopy: {
+    flex: 1,
+  },
+  officialLabel: {
+    color: "#087D97",
+    fontSize: 12,
+    fontWeight: "800",
+    marginBottom: 3,
+  },
+  listenButton: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    backgroundColor: "#087D97",
+    paddingHorizontal: 17,
+    paddingVertical: 11,
+    borderRadius: 14,
+    marginTop: 16,
+  },
+  listenButtonText: {
+    color: "#FFF",
+    fontWeight: "700",
+  },
 
   titleRow: {
     flexDirection: "row",
@@ -474,21 +514,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#20252E",
     lineHeight: 24,
-  },
-
-  badge: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 25,
-    flexShrink: 0,
-    alignSelf: "flex-start",
-    minWidth: 90,
-  },
-
-  badgeText: {
-    fontWeight: "600",
-    fontSize: 13,
-    textAlign: "center",
   },
 
   typeChip: {

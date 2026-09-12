@@ -48,15 +48,11 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
           <View style={[styles.iconPanel, { backgroundColor: palette.iconPanel }]}>
-            <SymbolView
-              name={{ ios: 'megaphone', web: 'campaign' }}
-              size={48}
-              tintColor={palette.accent}
-            />
+            <MaterialIcons name="campaign" size={50} color={palette.accent} />
           </View>
 
           <View style={styles.copy}>
-            <Text style={[styles.title, { color: palette.text }]}>Impact in Action</Text>
+            <Text style={[styles.title, { color: palette.text }]}>CitznY</Text>
             <Text style={[styles.subtitle, { color: palette.body }]}>Share stories from your community, turn them into campaigns, and guide people toward action.</Text>
           </View>
 

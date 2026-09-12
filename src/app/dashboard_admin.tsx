@@ -1,6 +1,6 @@
 import { TranslatedText as Text } from '@/components/translated-text';
 import { TranslatedTextInput as TextInput } from '@/components/translated-text-input';
-import { createCampaign, fetchAdminProfile, fetchCampaigns, fetchPendingStories, logoutAdmin, subscribeToAdminSession, updateAdminCredentials, updateStoryStatus } from '@/services/firebaseService';
+import { createCampaign, createPodcast, fetchAdminAnalytics, fetchAdminProfile, fetchCampaigns, fetchPendingStories, fetchPublishedPodcasts, logoutAdmin, subscribeToAdminSession, updateAdminCredentials, updateStoryStatus } from '@/services/firebaseService';
 import { normalizeCampaignUrl } from '@/utils/validation';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
@@ -23,20 +23,30 @@ interface Campaign {
   id: string;
   title: string;
   platform: string;
-  posts: number;
-  frequency: string;
+  description: string;
+  joined: number;
+  posts?: number;
+  frequency?: string;
   status: 'active' | 'draft' | 'completed';
   campaignUrl: string;
 }
 
+type Analytics = { submitted: number; pending: number; approved: number; rejected: number; campaigns: number; volunteers: number; writing: number; media: number };
+type Podcast = { id: string; title: string; description: string; listenUrl: string; status: 'published' };
+
+const emptyAnalytics: Analytics = { submitted: 0, pending: 0, approved: 0, rejected: 0, campaigns: 0, volunteers: 0, writing: 0, media: 0 };
+
 export default function DashboardAdminScreen() {
-  const [activeTab, setActiveTab] = useState<'stories' | 'campaigns'>('stories');
+  const [activeTab, setActiveTab] = useState<'analytics' | 'stories' | 'campaigns' | 'podcasts'>('analytics');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isCampaignSuccessVisible, setIsCampaignSuccessVisible] = useState(false);
+  const [isPodcastModalVisible, setIsPodcastModalVisible] = useState(false);
+  const [podcastTitle, setPodcastTitle] = useState('');
+  const [podcastDescription, setPodcastDescription] = useState('');
+  const [podcastUrl, setPodcastUrl] = useState('');
   const [campaignTitle, setCampaignTitle] = useState('');
   const [campaignPlatform, setCampaignPlatform] = useState('');
-  const [campaignPosts, setCampaignPosts] = useState('');
-  const [campaignFrequency, setCampaignFrequency] = useState('');
+  const [campaignDescription, setCampaignDescription] = useState('');
   const [campaignUrl, setCampaignUrl] = useState('');
   const [isCredentialsModalVisible, setIsCredentialsModalVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -47,19 +57,25 @@ export default function DashboardAdminScreen() {
 
   const [pendingStories, setPendingStories] = useState<PendingStory[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [podcasts, setPodcasts] = useState<Podcast[]>([]);
   const [adminName, setAdminName] = useState('Admin');
+  const [analytics, setAnalytics] = useState<Analytics>(emptyAnalytics);
 
   useEffect(() => {
     const loadData = async () => {
-      const [storiesData, campaignsData, adminProfile] = await Promise.all([
+      const [storiesData, campaignsData, adminProfile, analyticsData, podcastData] = await Promise.all([
         fetchPendingStories(),
         fetchCampaigns(),
         fetchAdminProfile(),
+        fetchAdminAnalytics(),
+        fetchPublishedPodcasts(),
       ]);
 
       setPendingStories(storiesData as PendingStory[]);
       setCampaigns(campaignsData as Campaign[]);
       setAdminName(adminProfile?.name || 'Admin');
+      setAnalytics(analyticsData);
+      setPodcasts(podcastData as Podcast[]);
     };
 
     const unsubscribe = subscribeToAdminSession((isAdmin) => {
@@ -76,6 +92,7 @@ export default function DashboardAdminScreen() {
     const success = await updateStoryStatus(storyId, 'approved');
     if (success) {
       setPendingStories(prev => prev.filter(story => story.id !== storyId));
+      setAnalytics(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), approved: prev.approved + 1 }));
       Alert.alert('Success', 'Story approved successfully!');
     } else {
       Alert.alert('Error', 'Could not approve story right now.');
@@ -95,6 +112,7 @@ export default function DashboardAdminScreen() {
             const success = await updateStoryStatus(storyId, 'rejected');
             if (success) {
               setPendingStories(prev => prev.filter(story => story.id !== storyId));
+              setAnalytics(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), rejected: prev.rejected + 1 }));
               Alert.alert('Rejected', 'Story has been rejected.');
             } else {
               Alert.alert('Error', 'Could not reject story right now.');
@@ -106,7 +124,7 @@ export default function DashboardAdminScreen() {
   };
 
   const handleCreateCampaign = async () => {
-    if (!campaignTitle.trim() || !campaignPlatform || !campaignPosts || !campaignFrequency.trim() || !campaignUrl.trim()) {
+    if (!campaignTitle.trim() || !campaignPlatform || !campaignDescription.trim() || !campaignUrl.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
@@ -120,22 +138,44 @@ export default function DashboardAdminScreen() {
     const created = await createCampaign({
       title: campaignTitle,
       platform: campaignPlatform,
-      posts: parseInt(campaignPosts, 10),
-      frequency: campaignFrequency,
+      description: campaignDescription.trim(),
       campaignUrl: normalizedUrl,
     });
 
     if (created) {
       setCampaigns(prev => [...prev, created as Campaign]);
+      setAnalytics(prev => ({ ...prev, campaigns: prev.campaigns + 1 }));
       setCampaignTitle('');
       setCampaignPlatform('');
-      setCampaignPosts('');
-      setCampaignFrequency('');
+      setCampaignDescription('');
       setCampaignUrl('');
       setIsModalVisible(false);
       setIsCampaignSuccessVisible(true);
     } else {
       Alert.alert('Error', 'Could not create campaign right now.');
+    }
+  };
+
+  const handleCreatePodcast = async () => {
+    if (!podcastTitle.trim() || !podcastDescription.trim() || !podcastUrl.trim()) {
+      Alert.alert('Incomplete', 'Please add the podcast title, description and link.');
+      return;
+    }
+    const normalizedUrl = normalizeCampaignUrl(podcastUrl);
+    if (!normalizedUrl) {
+      Alert.alert('Invalid link', 'Please enter a valid podcast link.');
+      return;
+    }
+    try {
+      const created = await createPodcast({ title: podcastTitle, description: podcastDescription, listenUrl: normalizedUrl });
+      setPodcasts(items => [...items, created as Podcast]);
+      setPodcastTitle('');
+      setPodcastDescription('');
+      setPodcastUrl('');
+      setIsPodcastModalVisible(false);
+      Alert.alert('Podcast published', 'The podcast is now visible under Stories → Podcast.');
+    } catch (error: any) {
+      Alert.alert('Unable to publish podcast', error?.message || 'Please try again.');
     }
   };
 
@@ -223,6 +263,12 @@ export default function DashboardAdminScreen() {
 
   const pendingCount = pendingStories.filter(s => s.status === 'pending').length;
 
+  const openCampaignsTab = async () => {
+    setActiveTab('campaigns');
+    const latestCampaigns = await fetchCampaigns();
+    setCampaigns(latestCampaigns as Campaign[]);
+  };
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -258,6 +304,10 @@ export default function DashboardAdminScreen() {
 
         {/* Tabs */}
         <View style={styles.tabContainer}>
+          <Pressable style={[styles.tab, activeTab === 'analytics' && styles.activeTab]} onPress={() => setActiveTab('analytics')}>
+            <MaterialIcons name="analytics" size={20} color={activeTab === 'analytics' ? '#087D97' : '#666'} />
+            <Text style={[styles.tabText, activeTab === 'analytics' && styles.activeTabText]}>Analytics</Text>
+          </Pressable>
           <Pressable
             style={[styles.tab, activeTab === 'stories' && styles.activeTab]}
             onPress={() => setActiveTab('stories')}
@@ -273,7 +323,7 @@ export default function DashboardAdminScreen() {
           </Pressable>
           <Pressable
             style={[styles.tab, activeTab === 'campaigns' && styles.activeTab]}
-            onPress={() => setActiveTab('campaigns')}
+            onPress={() => void openCampaignsTab()}
           >
             <MaterialIcons 
               name="campaign" 
@@ -284,13 +334,56 @@ export default function DashboardAdminScreen() {
               Campaigns
             </Text>
           </Pressable>
+          <Pressable style={[styles.tab, activeTab === 'podcasts' && styles.activeTab]} onPress={() => setActiveTab('podcasts')}>
+            <MaterialIcons name="podcasts" size={20} color={activeTab === 'podcasts' ? '#087D97' : '#666'} />
+            <Text style={[styles.tabText, activeTab === 'podcasts' && styles.activeTabText]}>Podcasts</Text>
+          </Pressable>
         </View>
 
         <ScrollView 
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {activeTab === 'stories' ? (
+          {activeTab === 'analytics' ? (
+            <View>
+              <View style={styles.analyticsHeadingRow}>
+                <MaterialIcons name="bar-chart" size={25} color="#087D97" />
+                <Text style={styles.analyticsEyebrow}>Private admin area</Text>
+              </View>
+              <Text style={styles.analyticsTitle}>Analytics dashboard</Text>
+              <Text style={styles.analyticsSubtitle}>Program activity at a glance</Text>
+              <View style={styles.analyticsGrid}>
+                {[
+                  ['Stories submitted', analytics.submitted],
+                  ['Awaiting review', analytics.pending],
+                  ['Stories approved', analytics.approved],
+                  ['Stories rejected', analytics.rejected],
+                  ['Active campaigns', analytics.campaigns],
+                  ['Campaign volunteers', analytics.volunteers],
+                  ['Writing stories', analytics.writing],
+                  ['Media stories', analytics.media],
+                ].map(([label, value]) => (
+                  <View key={String(label)} style={styles.analyticsCard}>
+                    <Text style={styles.analyticsNumber}>{value}</Text>
+                    <Text style={styles.analyticsLabel}>{label}</Text>
+                  </View>
+                ))}
+              </View>
+              <View style={styles.qualityCard}>
+                <Text style={styles.qualityTitle}>Participation quality</Text>
+                {[
+                  ['Approval rate', analytics.submitted ? Math.round((analytics.approved / analytics.submitted) * 100) : 0],
+                  ['Review completion', analytics.submitted ? Math.round(((analytics.approved + analytics.rejected) / analytics.submitted) * 100) : 0],
+                  ['Media participation', analytics.submitted ? Math.round((analytics.media / analytics.submitted) * 100) : 0],
+                ].map(([label, value]) => (
+                  <View key={String(label)} style={styles.qualityRow}>
+                    <Text style={styles.qualityLabel}>{label}</Text>
+                    <Text style={styles.qualityValue}>{value}%</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : activeTab === 'stories' ? (
             <View>
               {pendingStories.filter(s => s.status === 'pending').length === 0 ? (
                 <View style={styles.emptyState}>
@@ -347,7 +440,7 @@ export default function DashboardAdminScreen() {
                   ))
               )}
             </View>
-          ) : (
+          ) : activeTab === 'campaigns' ? (
             <View>
               <Pressable 
                 style={styles.createCampaignButton}
@@ -369,7 +462,9 @@ export default function DashboardAdminScreen() {
                     </View>
                     <View style={styles.campaignInfo}>
                       <Text style={styles.campaignTitle}>{campaign.title}</Text>
-                      <Text style={styles.campaignDetails}>
+                      <Text style={styles.campaignDetails}>{campaign.description || 'No description provided.'}</Text>
+                      <Text style={styles.campaignVolunteerCount}>{Number(campaign.joined) || 0} volunteers</Text>
+                      <Text style={[styles.campaignDetails, styles.legacyCampaignDetails]}>
                         {campaign.posts} posts • {campaign.frequency}
                       </Text>
                     </View>
@@ -377,6 +472,26 @@ export default function DashboardAdminScreen() {
                       <Text style={styles.campaignStatusText}>
                         {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
                       </Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View>
+              <Pressable style={styles.createCampaignButton} onPress={() => setIsPodcastModalVisible(true)}>
+                <MaterialIcons name="add" size={24} color="#FFF" />
+                <Text style={styles.createCampaignText}>Add Podcast</Text>
+              </Pressable>
+              {podcasts.length === 0 && <Text style={styles.emptyStateSubtext}>No podcast episodes published yet.</Text>}
+              {podcasts.map(podcast => (
+                <View key={podcast.id} style={styles.campaignCard}>
+                  <View style={styles.campaignHeader}>
+                    <View style={styles.campaignIconContainer}><MaterialIcons name="podcasts" size={24} color="#087D97" /></View>
+                    <View style={styles.campaignInfo}>
+                      <Text style={styles.campaignTitle}>{podcast.title}</Text>
+                      <Text style={styles.campaignDetails}>{podcast.description}</Text>
+                      <Text style={styles.podcastLink} numberOfLines={1}>{podcast.listenUrl}</Text>
                     </View>
                   </View>
                 </View>
@@ -438,28 +553,18 @@ export default function DashboardAdminScreen() {
                   </View>
                 </View>
 
-                <View style={styles.modalRow}>
-                  <View style={[styles.modalInputGroup, { flex: 1, marginRight: 8 }]}>
-                    <Text style={styles.modalLabel}>Posts</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="Number"
-                      placeholderTextColor="#999"
-                      keyboardType="numeric"
-                      value={campaignPosts}
-                      onChangeText={setCampaignPosts}
-                    />
-                  </View>
-                  <View style={[styles.modalInputGroup, { flex: 1, marginLeft: 8 }]}>
-                    <Text style={styles.modalLabel}>Frequency</Text>
-                    <TextInput
-                      style={styles.modalInput}
-                      placeholder="Weekly/Daily"
-                      placeholderTextColor="#999"
-                      value={campaignFrequency}
-                      onChangeText={setCampaignFrequency}
-                    />
-                  </View>
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalLabel}>Short description</Text>
+                  <TextInput
+                    style={[styles.modalInput, styles.descriptionInput]}
+                    placeholder="Tell users what this campaign is about"
+                    placeholderTextColor="#999"
+                    value={campaignDescription}
+                    onChangeText={setCampaignDescription}
+                    multiline
+                    textAlignVertical="top"
+                    maxLength={300}
+                  />
                 </View>
 
                 <View style={styles.modalInputGroup}>
@@ -488,6 +593,35 @@ export default function DashboardAdminScreen() {
                   >
                     <Text style={styles.modalSaveText}>Create</Text>
                   </Pressable>
+                </View>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal visible={isPodcastModalVisible} animationType="slide" transparent onRequestClose={() => setIsPodcastModalVisible(false)}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add Podcast</Text>
+                <Pressable onPress={() => setIsPodcastModalVisible(false)}><MaterialIcons name="close" size={24} color="#333" /></Pressable>
+              </View>
+              <View style={styles.modalForm}>
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalLabel}>Podcast title</Text>
+                  <TextInput style={styles.modalInput} placeholder="Enter episode title" placeholderTextColor="#999" value={podcastTitle} onChangeText={setPodcastTitle} />
+                </View>
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalLabel}>Description</Text>
+                  <TextInput style={[styles.modalInput, styles.descriptionInput]} placeholder="Describe this episode" placeholderTextColor="#999" value={podcastDescription} onChangeText={setPodcastDescription} multiline textAlignVertical="top" maxLength={500} />
+                </View>
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalLabel}>Podcast link</Text>
+                  <TextInput style={styles.modalInput} placeholder="https://open.spotify.com/..." placeholderTextColor="#999" value={podcastUrl} onChangeText={setPodcastUrl} keyboardType="url" autoCapitalize="none" />
+                </View>
+                <View style={styles.modalButtons}>
+                  <Pressable style={[styles.modalButton, styles.modalCancelButton]} onPress={() => setIsPodcastModalVisible(false)}><Text style={styles.modalCancelText}>Cancel</Text></Pressable>
+                  <Pressable style={[styles.modalButton, styles.modalSaveButton]} onPress={() => void handleCreatePodcast()}><Text style={styles.modalSaveText}>Publish</Text></Pressable>
                 </View>
               </View>
             </View>
@@ -643,6 +777,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingBottom: 20,
   },
+  analyticsHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  analyticsEyebrow: { color: '#087D97', fontSize: 16, fontWeight: '700' },
+  analyticsTitle: { color: '#1D2530', fontSize: 28, fontWeight: '800', marginTop: 12 },
+  analyticsSubtitle: { color: '#666', fontSize: 16, marginTop: 4, marginBottom: 20 },
+  analyticsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  analyticsCard: { width: '48%', minHeight: 120, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2DDD4', borderRadius: 18, padding: 18, justifyContent: 'center' },
+  analyticsNumber: { color: '#087D97', fontSize: 31, fontWeight: '800' },
+  analyticsLabel: { color: '#5B6470', fontSize: 15, lineHeight: 20, marginTop: 10 },
+  qualityCard: { backgroundColor: '#E2EFF0', borderWidth: 1, borderColor: '#A9CDD1', borderRadius: 20, padding: 20, marginTop: 20 },
+  qualityTitle: { color: '#1D2530', fontSize: 18, fontWeight: '800', marginBottom: 14 },
+  qualityRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7 },
+  qualityLabel: { color: '#5B6470', fontSize: 15 },
+  qualityValue: { color: '#1D2530', fontSize: 16, fontWeight: '700' },
   storyCard: {
     backgroundColor: '#FFF',
     borderRadius: 16,
@@ -808,6 +955,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 24,
   },
+  campaignVolunteerCount: {
+    color: '#087D97',
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 5,
+  },
+  podcastLink: {
+    color: '#087D97',
+    fontSize: 12,
+    marginTop: 7,
+  },
+  legacyCampaignDetails: {
+    display: 'none',
+  },
   successModalContent: {
     alignItems: 'center',
   },
@@ -876,6 +1037,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     backgroundColor: '#FFF',
+  },
+  descriptionInput: {
+    minHeight: 90,
   },
   modalRow: {
     flexDirection: 'row',

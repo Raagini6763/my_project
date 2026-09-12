@@ -1,9 +1,10 @@
 import { TranslatedText as Text } from '@/components/translated-text';
 import { TranslatedTextInput as TextInput } from '@/components/translated-text-input';
+import { fetchApprovedStories } from '@/services/firebaseService';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { router, usePathname } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { router, useFocusEffect, usePathname } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type ThemeMode = 'light' | 'dark';
@@ -14,13 +15,6 @@ type Story = {
   location: string;
   likes: number;
 };
-
-const stories: Story[] = [
-  { id: '1', title: 'Broken streetlights near school', location: 'Wardha, MH', likes: 47 },
-  { id: '2', title: 'Unsafe bus stop for girls', location: 'Nagpur, MH', likes: 89 },
-  { id: '3', title: 'Water shortage in slum area', location: 'Mumbai, MH', likes: 124 },
-  { id: '4', title: 'Dirty public park needs cleaning', location: 'Pune, MH', likes: 32 },
-];
 
 const themes = {
   light: {
@@ -47,13 +41,13 @@ const themes = {
 
 const actions = [
   {
-    label: 'Browse\napproved stories',
+    label: 'Browse\nstories',
     icon: 'menu-book' as const,
     color: '#087D97',
     iconBackground: '#E4F2F5',
   },
   {
-    label: 'Build an\nawareness\ncampaign',
+    label: 'Join an\nawareness\ncampaign',
     icon: 'campaign' as const,
     color: '#FF725E',
     iconBackground: '#FFF0ED',
@@ -110,11 +104,30 @@ export default function DashboardScreen() {
   const pathname = usePathname();
   const navigation = getNavigationItems(pathname);
   const [searchQuery, setSearchQuery] = useState('');
+  const [stories, setStories] = useState<Story[]>([]);
+  const [storiesLoading, setStoriesLoading] = useState(true);
   const palette = themes[themeMode];
   const filteredStories = stories.filter((story) => {
     const query = searchQuery.trim().toLowerCase();
     return !query || `${story.title} ${story.location}`.toLowerCase().includes(query);
   });
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setStoriesLoading(true);
+    fetchApprovedStories()
+      .then(items => {
+        if (active) setStories(items.slice(0, 4) as Story[]);
+      })
+      .catch(error => {
+        console.warn('Homepage stories could not be loaded:', error);
+        if (active) setStories([]);
+      })
+      .finally(() => {
+        if (active) setStoriesLoading(false);
+      });
+    return () => { active = false; };
+  }, []));
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.background }]}>
@@ -125,7 +138,7 @@ export default function DashboardScreen() {
           keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <View>
-              <Text style={[styles.appName, { color: palette.text }]}>Awaaz</Text>
+              <Text style={[styles.appName, { color: palette.text }]}>CitznY</Text>
               <Text style={[styles.tagline, { color: palette.body }]}>Youth Civic Storytelling</Text>
             </View>
             <View style={styles.themeActions}>
@@ -161,11 +174,11 @@ export default function DashboardScreen() {
                 key={action.label}
                 onPress={() => {
                   switch (action.label) {
-                    case "Browse\napproved stories":
+                    case "Browse\nstories":
                       router.push("/stories");
                       break;
 
-                    case "Build an\nawareness\ncampaign":
+                    case "Join an\nawareness\ncampaign":
                       router.push("/campaigns");
                       break;
 
@@ -204,6 +217,7 @@ export default function DashboardScreen() {
           </View>
 
           <View style={styles.storyList}>
+            {storiesLoading && <ActivityIndicator size="large" color={palette.accent} style={styles.storyLoader} />}
             {filteredStories.map((story) => (
               <Pressable
                 key={story.id}
@@ -226,8 +240,8 @@ export default function DashboardScreen() {
                 </View>
               </Pressable>
             ))}
-            {filteredStories.length === 0 && (
-              <Text style={[styles.emptyText, { color: palette.body }]}>No stories found</Text>
+            {!storiesLoading && filteredStories.length === 0 && (
+              <Text style={[styles.emptyText, { color: palette.body }]}>{searchQuery.trim() ? 'No stories found' : 'No stories available yet'}</Text>
             )}
           </View>
         </ScrollView>
@@ -324,6 +338,7 @@ const styles = StyleSheet.create({
   impactTitle: { fontSize: 19, lineHeight: 24, fontWeight: '800' },
   seeAll: { fontSize: 15, fontWeight: '600' },
   storyList: { gap: 12 },
+  storyLoader: { paddingVertical: 30 },
   storyCard: { borderWidth: 1, borderRadius: 19, padding: 15, minHeight: 85 },
   storyTitle: { fontSize: 18, lineHeight: 23, fontWeight: '600', marginBottom: 9 },
   storyMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

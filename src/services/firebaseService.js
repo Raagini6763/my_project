@@ -111,8 +111,8 @@ const hardcodedCampaigns = [
 
 export const hardcodedAdminProfile = {
   id: "seed-admin",
-  name: "Awaaz Admin",
-  email: "admin@awaaz.com",
+  name: "CitznY Admin",
+  email: "admin@citzny.app",
   role: "admin",
   status: "active",
 };
@@ -177,7 +177,7 @@ export const createStory = async ({
     location,
     category: category || "General",
     type: storyType || "Article",
-    authorEmail: authorEmail || "anonymous@awaaz.com",
+    authorEmail: authorEmail || "anonymous@citzny.app",
     authorUid: user.uid,
     status: "pending",
     mediaType: mediaType || "text",
@@ -369,6 +369,44 @@ export const fetchCampaigns = async () => {
   }
 };
 
+export const fetchMyStories = async () => {
+  const user = await ensureUser();
+  const snapshot = await getDocs(
+    query(collection(db, "stories"), where("authorUid", "==", user.uid)),
+  );
+  return snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .filter(isCompleteStory)
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      location: item.location || "Unknown",
+      status: item.status || "pending",
+      createdAt: item.createdAt?.toDate ? item.createdAt.toDate() : null,
+      updatedAt: item.updatedAt?.toDate ? item.updatedAt.toDate() : null,
+    }));
+};
+
+export const fetchAdminAnalytics = async () => {
+  const [storySnapshot, campaignSnapshot] = await Promise.all([
+    getDocs(collection(db, "stories")),
+    getDocs(collection(db, "campaigns")),
+  ]);
+  const stories = storySnapshot.docs.map((item) => item.data());
+  const campaigns = campaignSnapshot.docs.map((item) => item.data());
+  const count = (status) => stories.filter((story) => story.status === status).length;
+  return {
+    submitted: stories.length,
+    pending: count("pending"),
+    approved: count("approved"),
+    rejected: count("rejected"),
+    campaigns: campaigns.filter((campaign) => campaign.status === "active").length,
+    volunteers: campaigns.reduce((total, campaign) => total + (Number(campaign.joined) || 0), 0),
+    writing: stories.filter((story) => (story.mediaType || "text") === "text").length,
+    media: stories.filter((story) => (story.mediaType || "text") !== "text").length,
+  };
+};
+
 export const fetchCampaignInteraction = async (campaignId) => {
   const user = await ensureUser();
   const interactionSnapshot = await getDoc(
@@ -448,6 +486,33 @@ export const createCampaign = async (campaign) => {
     console.warn("Failed to create campaign:", error);
     return null;
   }
+};
+
+export const fetchPublishedPodcasts = async () => {
+  try {
+    const snapshot = await getDocs(
+      query(collection(db, "podcasts"), where("status", "==", "published")),
+    );
+    return snapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }))
+      .filter((item) => hasText(item.title) && hasText(item.description) && hasText(item.listenUrl));
+  } catch (error) {
+    console.warn("Failed to load podcasts:", error);
+    throw error;
+  }
+};
+
+export const createPodcast = async ({ title, description, listenUrl }) => {
+  const podcast = {
+    title: title.trim(),
+    description: description.trim(),
+    listenUrl: listenUrl.trim(),
+    status: "published",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+  const podcastRef = await addDoc(collection(db, "podcasts"), podcast);
+  return { id: podcastRef.id, ...podcast };
 };
 
 export const saveAdminProfile = async (adminProfile) => {

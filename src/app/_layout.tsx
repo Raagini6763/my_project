@@ -24,6 +24,7 @@ export default function RootLayout() {
         <Stack.Screen name="upload" />
         <Stack.Screen name="campaigns" />
         <Stack.Screen name="action" />
+        <Stack.Screen name="story-review" />
         <Stack.Screen name="about" />
         <Stack.Screen name="privacy" />
         </Stack>
