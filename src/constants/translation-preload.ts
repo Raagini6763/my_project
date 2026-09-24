@@ -1,6 +1,6 @@
 export const TRANSLATION_PRELOAD = [
   'CitznY', 'Share stories from your community, turn them into campaigns, and guide people toward action.',
-  'Browse Issues', 'Admin Login', 'Light', 'Dark', 'Home', 'Stories', 'Upload', 'Impact', 'Campaigns', 'Action',
+  'Browse Issues', 'Learn More', 'Admin Login', 'Light', 'Dark', 'Home', 'Stories', 'Upload', 'Impact', 'Campaigns', 'Action',
   'Share Your Story', 'Choose your format and answer the guided questions', 'Story Title',
   'How do you want to tell your story?', 'Writing', 'Video/Reel', 'Photos', 'Next →',
   'Answer these questions to build your story', '1. What happened?', '2. Why does this matter to you?',
@@ -26,4 +26,5 @@ export const TRANSLATION_PRELOAD = [
   'Story sent for approval', 'Your story was submitted successfully. It will appear on the Stories page after an admin approves it.',
   'View Stories', 'Done',
   'Campaign created', 'The campaign was created successfully and is now visible to users.',
+  'Get in Touch', 'Email Us', 'Response within 24 hours',
 ] as const;

@@ -115,14 +115,18 @@ export default function HomeScreen() {
 
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push('/login')}
+              onPress={() => router.push('/about')}
               style={({ pressed }) => [
                 styles.actionButton,
-                { backgroundColor: pressed ? '#06677D' : '#087D97' },
+                { backgroundColor: pressed ? '#7F787A' : palette.inactiveAction },
                 pressed && styles.pressed,
               ]}>
-              <MaterialIcons name="admin-panel-settings" size={21} color="#FFFFFF" />
-              <Text style={styles.actionText}>Admin Login</Text>
+              <MaterialIcons name="campaign" size={21} color="#FFFFFF" />
+              <Text style={styles.actionText}>Learn More</Text>
+            </Pressable>
+
+            <Pressable accessibilityRole="link" onPress={() => router.push('/login')} style={styles.adminLink}>
+              <Text style={[styles.adminLinkText, { color: palette.accent }]}>Admin Login</Text>
             </Pressable>
           </View>
 
@@ -267,7 +271,7 @@ const styles = StyleSheet.create({
   actions: {
     width: '100%',
     gap: 14,
-    marginBottom: 48,
+    marginBottom: 36,
   },
   translationStatus: {
     fontSize: 13,
@@ -326,6 +330,16 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.78,
+  },
+  adminLink: {
+    alignSelf: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+  },
+  adminLinkText: {
+    fontSize: 15,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   modalBackdrop: {
     flex: 1,
