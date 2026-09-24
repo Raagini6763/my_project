@@ -9,7 +9,7 @@ declare module '@/services/firebaseService' {
   export const fetchCampaigns: () => Promise<any[]>;
   export const createCampaign: (campaign: any) => Promise<any>;
   export const fetchPublishedPodcasts: () => Promise<any[]>;
-  export const createPodcast: (podcast: { title: string; description: string; listenUrl: string }) => Promise<any>;
+  export const createPodcast: (podcast: { title: string; description: string; listenUrl?: string; imageUris?: string[] }) => Promise<any>;
   export const updateCampaignInteraction: (campaignId: string, field: 'joined' | 'shared', enabled: boolean) => Promise<{ enabled: boolean; count: number }>;
   export const fetchCampaignInteraction: (campaignId: string) => Promise<{ joined?: boolean; shared?: boolean }>;
   export const saveAdminProfile: (adminProfile: any) => Promise<any>;

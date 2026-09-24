@@ -4,7 +4,7 @@ Use this as a review aid when completing Play Console. Verify every answer again
 
 ## Data handled
 
-- User content: story text, photos, videos and audio recordings.
+- User content: story text, photos and videos.
 - Optional personal information: author email entered or attached to a submission.
 - Approximate location: a user-written village, district or state description; the app does not request device GPS.
 - App activity: campaign join/share interactions associated with a Firebase anonymous identifier.

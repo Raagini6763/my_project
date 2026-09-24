@@ -208,11 +208,18 @@ export const fetchApprovedStories = async () => {
     );
     const stories = snapshot.docs
       .map((item) => ({ id: item.id, ...item.data() }))
-      .filter((item) => item.status === "approved" && isCompleteStory(item))
+      .filter(
+        (item) =>
+          item.status === "approved" &&
+          isCompleteStory(item) &&
+          item.mediaType !== "audio" &&
+          item.type !== "Podcast" &&
+          item.type !== "Voice Story",
+      )
       .map((item) => ({
         id: item.id,
         title: item.title,
-        type: item.type === "Podcast" ? "Voice Story" : item.type || "Article",
+        type: item.type || "Article",
         description: item.description || "No description provided.",
         status: "Approved",
         statusColor: "#DCF8E4",
@@ -522,18 +529,24 @@ export const fetchPublishedPodcasts = async () => {
     );
     return snapshot.docs
       .map((item) => ({ id: item.id, ...item.data() }))
-      .filter((item) => hasText(item.title) && hasText(item.description) && hasText(item.listenUrl));
+      .filter((item) => hasText(item.title) && hasText(item.description));
   } catch (error) {
     console.warn("Failed to load podcasts:", error);
     throw error;
   }
 };
 
-export const createPodcast = async ({ title, description, listenUrl }) => {
+export const createPodcast = async ({ title, description, listenUrl, imageUris = [] }) => {
+  const imageUrls = [];
+  for (const imageUri of imageUris) {
+    const uploadedUrl = await uploadStoryMedia(imageUri);
+    if (uploadedUrl) imageUrls.push(uploadedUrl);
+  }
   const podcast = {
     title: title.trim(),
     description: description.trim(),
-    listenUrl: listenUrl.trim(),
+    listenUrl: listenUrl?.trim() || null,
+    imageUrls,
     status: "published",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

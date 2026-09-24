@@ -3,7 +3,6 @@ import { TranslatedTextInput as TextInput } from '@/components/translated-text-i
 import { createStory } from '@/services/firebaseService';
 import { refineStoryText } from '@/services/geminiService';
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder } from 'expo-audio';
 import * as ImagePicker from 'expo-image-picker';
 import { router, usePathname } from "expo-router";
 import { useState } from "react";
@@ -23,6 +22,7 @@ const getNavigationItems = (pathname: string) => [
   { label: "Home", icon: "home" as const, route: "/", active: pathname === "/" || pathname === "/dashboard" },
   { label: "Stories", icon: "menu-book" as const, route: "/stories", active: pathname === "/stories" },
   { label: "Upload", icon: "ios-share" as const, route: "/upload", active: pathname === "/upload" },
+  { label: "Impact", icon: "podcasts" as const, route: "/podcasts", active: pathname === "/podcasts" },
   { label: "Campaigns", icon: "campaign" as const, route: "/campaigns", active: pathname === "/campaigns" },
   { label: "Action", icon: "bolt" as const, route: "/action", active: pathname === "/action" },
 ];
@@ -39,8 +39,6 @@ export default function UploadScreen() {
   const [location, setLocation] = useState("");
   const [category, setCategory] = useState("");
   const [customCategory, setCustomCategory] = useState("");
-  const [isRecording, setIsRecording] = useState(false);
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
   const [noteContent, setNoteContent] = useState("");
   const [currentQuestion, setCurrentQuestion] = useState("");
@@ -50,7 +48,7 @@ export default function UploadScreen() {
   const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedMediaUri, setUploadedMediaUri] = useState<string | null>(null);
-  const [uploadedMediaType, setUploadedMediaType] = useState<'text' | 'image' | 'video' | 'audio'>('text');
+  const [uploadedMediaType, setUploadedMediaType] = useState<'text' | 'image' | 'video'>('text');
 
   const pathname = usePathname();
   const navigation = getNavigationItems(pathname);
@@ -58,7 +56,6 @@ export default function UploadScreen() {
   const formats = [
     { id: "writing", label: "Writing", icon: "edit" },
     { id: "video", label: "Video/Reel", icon: "videocam" },
-    { id: "podcast", label: "Voice Story", icon: "mic" },
     { id: "photos", label: "Photos", icon: "photo-camera" },
   ];
 
@@ -107,49 +104,6 @@ export default function UploadScreen() {
           [{ text: "OK" }]
         );
       }
-    } else if (formatId === "podcast") {
-      // Start audio recording
-      await startRecording();
-    }
-  };
-
-  const startRecording = async () => {
-    try {
-      const permission = await AudioModule.requestRecordingPermissionsAsync();
-      if (permission.granted) {
-        await setAudioModeAsync({
-          allowsRecording: true,
-          playsInSilentMode: true,
-        });
-        await audioRecorder.prepareToRecordAsync();
-        audioRecorder.record();
-        setIsRecording(true);
-        Alert.alert("Recording", "Recording started... Tap again to stop.");
-      } else {
-        Alert.alert(
-          "Permission Denied",
-          "Please allow microphone access to record your voice story.",
-          [{ text: "OK" }]
-        );
-      }
-    } catch (err) {
-      console.error('Failed to start recording', err);
-    }
-  };
-
-  const stopRecording = async () => {
-    if (isRecording) {
-      setIsRecording(false);
-      await audioRecorder.stop();
-      const uri = audioRecorder.uri;
-      
-      setUploadedMediaUri(uri);
-      setUploadedMediaType('audio');
-      Alert.alert(
-        "Recording Complete",
-        "Your voice story has been recorded successfully!",
-        [{ text: "OK" }]
-      );
     }
   };
 
@@ -227,7 +181,7 @@ export default function UploadScreen() {
         description: refinedDescription,
         location,
         category,
-        storyType: format === 'writing' ? 'Article' : format === 'podcast' ? 'Voice Story' : format === 'video' ? 'Reel' : 'Photo Essay',
+        storyType: format === 'writing' ? 'Article' : format === 'video' ? 'Reel' : 'Photo Essay',
         authorEmail: 'anonymous@citzny.app',
         mediaUri: uploadedMediaUri,
         mediaType: uploadedMediaType,
@@ -313,21 +267,6 @@ export default function UploadScreen() {
             ]}>
               {f.label}
             </Text>
-            {format === f.id && f.id === "podcast" && (
-              <Pressable 
-                style={styles.recordButton}
-                onPress={isRecording ? stopRecording : startRecording}
-              >
-                <MaterialIcons 
-                  name={isRecording ? "stop" : "fiber-manual-record"} 
-                  size={20} 
-                  color={isRecording ? "#FF3B30" : "#087D97"} 
-                />
-                <Text style={styles.recordText}>
-                  {isRecording ? "Stop Recording" : "Start Recording"}
-                </Text>
-              </Pressable>
-            )}
           </Pressable>
         ))}
       </View>
@@ -731,21 +670,6 @@ const styles = StyleSheet.create({
   formatLabelActive: {
     color: "#087D97",
     fontWeight: "700",
-  },
-  recordButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 8,
-    backgroundColor: "#E8F4F8",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  recordText: {
-    fontSize: 12,
-    color: "#087D97",
-    fontWeight: "600",
   },
   nextButton: {
     backgroundColor: "#087D97",

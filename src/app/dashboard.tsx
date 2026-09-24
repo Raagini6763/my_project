@@ -86,6 +86,12 @@ const getNavigationItems = (pathname: string) => [
     active: pathname === '/upload',
   },
   {
+    label: 'Impact',
+    icon: 'podcasts' as const,
+    route: '/podcasts',
+    active: pathname === '/podcasts',
+  },
+  {
     label: 'Campaigns',
     icon: 'campaign' as const,
     route: '/campaigns',

@@ -21,9 +21,7 @@
       },
       "predictiveBackGestureEnabled": true,
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -38,15 +36,6 @@
           "photosPermission": "CitznY uses your photos only when you choose media for a community story.",
           "cameraPermission": "CitznY uses your camera only when you capture a photo or video for a community story.",
           "microphonePermission": false
-        }
-      ],
-      [
-        "expo-audio",
-        {
-          "microphonePermission": "CitznY uses your microphone only when you record a podcast story.",
-          "recordAudioAndroid": true,
-          "enableBackgroundRecording": false,
-          "enableBackgroundPlayback": false
         }
       ],
       [

@@ -1,5 +1,5 @@
 import { TranslatedText as Text } from '@/components/translated-text';
-import { fetchApprovedStories, fetchPublishedPodcasts } from '@/services/firebaseService';
+import { fetchApprovedStories } from '@/services/firebaseService';
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { router, useFocusEffect, usePathname } from "expo-router";
@@ -7,7 +7,6 @@ import { useCallback, useState } from "react";
 import {
     Alert,
     Image,
-    Linking,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -15,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-const filters = ["All", "Article", "Reel", "Photo Essay", "Voice Story", "Podcast"];
+const filters = ["All", "Article", "Reel", "Photo Essay"];
 
 const StoryVideo = ({ uri, style }: { uri: string; style: any }) => {
   const player = useVideoPlayer(uri);
@@ -26,6 +25,7 @@ const getNavigationItems = (pathname: string) => [
   { label: "Home", icon: "home" as const, route: "/", active: pathname === "/" || pathname === "/dashboard" },
   { label: "Stories", icon: "menu-book" as const, route: "/stories", active: pathname === "/stories" },
   { label: "Upload", icon: "ios-share" as const, route: "/upload", active: pathname === "/upload" },
+  { label: "Impact", icon: "podcasts" as const, route: "/podcasts", active: pathname === "/podcasts" },
   { label: "Campaigns", icon: "campaign" as const, route: "/campaigns", active: pathname === "/campaigns" },
   { label: "Action", icon: "bolt" as const, route: "/action", active: pathname === "/action" },
 ];
@@ -33,7 +33,6 @@ const getNavigationItems = (pathname: string) => [
 export default function StoriesScreen() {
   const [selectedFilter, setSelectedFilter] = useState("All");
   const [stories, setStories] = useState<any[]>([]);
-  const [podcasts, setPodcasts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
   const navigation = getNavigationItems(pathname);
@@ -43,13 +42,9 @@ export default function StoriesScreen() {
       let active = true;
     const loadStories = async () => {
       setIsLoading(true);
-      const [approvedStories, publishedPodcasts] = await Promise.all([
-        fetchApprovedStories(),
-        fetchPublishedPodcasts().catch(() => []),
-      ]);
+      const approvedStories = await fetchApprovedStories();
       if (active) {
         setStories(approvedStories);
-        setPodcasts(publishedPodcasts);
         setIsLoading(false);
       }
     };
@@ -61,10 +56,9 @@ export default function StoriesScreen() {
     }, [])
   );
 
-  const filteredStories = stories.filter((story) => {
-    if (selectedFilter === "Podcast") return false;
-    return selectedFilter === "All" || story.type === selectedFilter;
-  });
+  const filteredStories = stories.filter((story) =>
+    selectedFilter === "All" || story.type === selectedFilter
+  );
 
   const handleLike = (storyId: string) => {
     setStories(prevStories =>
@@ -194,23 +188,7 @@ export default function StoriesScreen() {
           {/* STORIES */}
 
           <View style={{ marginTop: 22 }}>
-            {selectedFilter === 'Podcast' && podcasts.map((podcast) => (
-              <View key={`official-${podcast.id}`} style={[styles.card, styles.officialPodcastCard]}>
-                <View style={styles.officialPodcastHeader}>
-                  <View style={styles.podcastIcon}><MaterialIcons name="podcasts" size={25} color="#087D97" /></View>
-                  <View style={styles.officialPodcastCopy}>
-                    <Text style={styles.officialLabel}>CitznY Podcast</Text>
-                    <Text style={styles.title}>{podcast.title}</Text>
-                  </View>
-                </View>
-                <Text style={styles.description}>{podcast.description}</Text>
-                <Pressable style={styles.listenButton} onPress={() => Linking.openURL(podcast.listenUrl)}>
-                  <MaterialIcons name="play-arrow" size={21} color="#FFF" />
-                  <Text style={styles.listenButtonText}>Listen Now</Text>
-                </Pressable>
-              </View>
-            ))}
-            {filteredStories.length === 0 && !(selectedFilter === 'Podcast' && podcasts.length > 0) ? (
+            {filteredStories.length === 0 ? (
               <Text style={styles.emptyState}>No stories yet.</Text>
             ) : filteredStories.map((story) => (
               <View key={story.id} style={styles.card}>
@@ -240,13 +218,6 @@ export default function StoriesScreen() {
 
                 {story.mediaUrl && story.mediaType === 'video' ? (
                   <StoryVideo uri={story.mediaUrl} style={styles.storyMedia} />
-                ) : null}
-
-                {story.mediaUrl && story.mediaType === 'audio' ? (
-                  <Pressable style={styles.audioButton} onPress={() => Linking.openURL(story.mediaUrl)}>
-                    <MaterialIcons name="play-arrow" size={22} color="#FFF" />
-                    <Text style={styles.audioButtonText}>Play voice recording</Text>
-                  </Pressable>
                 ) : null}
 
                 {/* LOCATION */}
@@ -458,47 +429,6 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 20,
   },
-  officialPodcastCard: {
-    borderColor: "#B9D9DC",
-    backgroundColor: "#F5FBFB",
-  },
-  officialPodcastHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  podcastIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    backgroundColor: "#E1F1F3",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  officialPodcastCopy: {
-    flex: 1,
-  },
-  officialLabel: {
-    color: "#087D97",
-    fontSize: 12,
-    fontWeight: "800",
-    marginBottom: 3,
-  },
-  listenButton: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    backgroundColor: "#087D97",
-    paddingHorizontal: 17,
-    paddingVertical: 11,
-    borderRadius: 14,
-    marginTop: 16,
-  },
-  listenButtonText: {
-    color: "#FFF",
-    fontWeight: "700",
-  },
 
   titleRow: {
     flexDirection: "row",
@@ -543,23 +473,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F0EDE8",
     marginTop: 16,
   },
-  audioButton: {
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#087D97",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginTop: 16,
-  },
-  audioButtonText: {
-    color: "#FFF",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",

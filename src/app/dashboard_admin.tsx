@@ -3,9 +3,10 @@ import { TranslatedTextInput as TextInput } from '@/components/translated-text-i
 import { createCampaign, createPodcast, fetchAdminAnalytics, fetchAdminProfile, fetchCampaigns, fetchPendingStories, fetchPublishedPodcasts, logoutAdmin, subscribeToAdminSession, updateAdminCredentials, updateStoryStatus } from '@/services/firebaseService';
 import { normalizeCampaignUrl } from '@/utils/validation';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface PendingStory {
@@ -32,7 +33,7 @@ interface Campaign {
 }
 
 type Analytics = { submitted: number; pending: number; approved: number; rejected: number; campaigns: number; volunteers: number; writing: number; media: number };
-type Podcast = { id: string; title: string; description: string; listenUrl: string; status: 'published' };
+type Podcast = { id: string; title: string; description: string; listenUrl?: string | null; imageUrl?: string | null; imageUrls?: string[]; status: 'published' };
 
 const emptyAnalytics: Analytics = { submitted: 0, pending: 0, approved: 0, rejected: 0, campaigns: 0, volunteers: 0, writing: 0, media: 0 };
 
@@ -44,6 +45,8 @@ export default function DashboardAdminScreen() {
   const [podcastTitle, setPodcastTitle] = useState('');
   const [podcastDescription, setPodcastDescription] = useState('');
   const [podcastUrl, setPodcastUrl] = useState('');
+  const [podcastImageUris, setPodcastImageUris] = useState<string[]>([]);
+  const [isPublishingPodcast, setIsPublishingPodcast] = useState(false);
   const [campaignTitle, setCampaignTitle] = useState('');
   const [campaignPlatform, setCampaignPlatform] = useState('');
   const [campaignDescription, setCampaignDescription] = useState('');
@@ -68,7 +71,10 @@ export default function DashboardAdminScreen() {
         fetchCampaigns(),
         fetchAdminProfile(),
         fetchAdminAnalytics(),
-        fetchPublishedPodcasts(),
+        fetchPublishedPodcasts().catch(error => {
+          console.warn('Admin podcast loading failed:', error);
+          return [];
+        }),
       ]);
 
       setPendingStories(storiesData as PendingStory[]);
@@ -157,25 +163,52 @@ export default function DashboardAdminScreen() {
   };
 
   const handleCreatePodcast = async () => {
-    if (!podcastTitle.trim() || !podcastDescription.trim() || !podcastUrl.trim()) {
-      Alert.alert('Incomplete', 'Please add the podcast title, description and link.');
+    if (!podcastTitle.trim() || !podcastDescription.trim()) {
+      Alert.alert('Incomplete', 'Please add the podcast title and information.');
       return;
     }
-    const normalizedUrl = normalizeCampaignUrl(podcastUrl);
-    if (!normalizedUrl) {
+    const normalizedUrl = podcastUrl.trim() ? normalizeCampaignUrl(podcastUrl) : '';
+    if (podcastUrl.trim() && !normalizedUrl) {
       Alert.alert('Invalid link', 'Please enter a valid podcast link.');
       return;
     }
     try {
-      const created = await createPodcast({ title: podcastTitle, description: podcastDescription, listenUrl: normalizedUrl });
+      setIsPublishingPodcast(true);
+      const created = await createPodcast({
+        title: podcastTitle,
+        description: podcastDescription,
+        listenUrl: normalizedUrl || undefined,
+        imageUris: podcastImageUris,
+      });
       setPodcasts(items => [...items, created as Podcast]);
       setPodcastTitle('');
       setPodcastDescription('');
       setPodcastUrl('');
+      setPodcastImageUris([]);
       setIsPodcastModalVisible(false);
-      Alert.alert('Podcast published', 'The podcast is now visible under Stories → Podcast.');
+      Alert.alert('Podcast published', 'The podcast is now visible in the Podcast section.');
     } catch (error: any) {
       Alert.alert('Unable to publish podcast', error?.message || 'Please try again.');
+    } finally {
+      setIsPublishingPodcast(false);
+    }
+  };
+
+  const choosePodcastImages = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission required', 'Allow photo access to add a podcast image.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      selectionLimit: 10,
+      quality: 0.85,
+    });
+    if (!result.canceled) {
+      const selectedUris = result.assets.map(asset => asset.uri).filter(Boolean);
+      setPodcastImageUris(current => Array.from(new Set([...current, ...selectedUris])).slice(0, 10));
     }
   };
 
@@ -269,6 +302,16 @@ export default function DashboardAdminScreen() {
     setCampaigns(latestCampaigns as Campaign[]);
   };
 
+  const openAnalyticsTab = async () => {
+    setActiveTab('analytics');
+    try {
+      setAnalytics(await fetchAdminAnalytics());
+    } catch (error) {
+      console.warn('Admin analytics refresh failed:', error);
+      Alert.alert('Unable to refresh analytics', 'Please check your connection and try again.');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -304,7 +347,7 @@ export default function DashboardAdminScreen() {
 
         {/* Tabs */}
         <View style={styles.tabContainer}>
-          <Pressable style={[styles.tab, activeTab === 'analytics' && styles.activeTab]} onPress={() => setActiveTab('analytics')}>
+          <Pressable style={[styles.tab, activeTab === 'analytics' && styles.activeTab]} onPress={() => void openAnalyticsTab()}>
             <MaterialIcons name="analytics" size={20} color={activeTab === 'analytics' ? '#087D97' : '#666'} />
             <Text style={[styles.tabText, activeTab === 'analytics' && styles.activeTabText]}>Analytics</Text>
           </Pressable>
@@ -491,7 +534,8 @@ export default function DashboardAdminScreen() {
                     <View style={styles.campaignInfo}>
                       <Text style={styles.campaignTitle}>{podcast.title}</Text>
                       <Text style={styles.campaignDetails}>{podcast.description}</Text>
-                      <Text style={styles.podcastLink} numberOfLines={1}>{podcast.listenUrl}</Text>
+                      {podcast.listenUrl ? <Text style={styles.podcastLink} numberOfLines={1}>{podcast.listenUrl}</Text> : null}
+                      {(podcast.imageUrls?.length || podcast.imageUrl) ? <Text style={styles.podcastLink}>{podcast.imageUrls?.length || 1} image{(podcast.imageUrls?.length || 1) === 1 ? '' : 's'} added</Text> : null}
                     </View>
                   </View>
                 </View>
@@ -606,24 +650,32 @@ export default function DashboardAdminScreen() {
                 <Text style={styles.modalTitle}>Add Podcast</Text>
                 <Pressable onPress={() => setIsPodcastModalVisible(false)}><MaterialIcons name="close" size={24} color="#333" /></Pressable>
               </View>
-              <View style={styles.modalForm}>
+              <ScrollView style={styles.podcastModalScroll} contentContainerStyle={styles.modalForm} showsVerticalScrollIndicator={false}>
                 <View style={styles.modalInputGroup}>
                   <Text style={styles.modalLabel}>Podcast title</Text>
                   <TextInput style={styles.modalInput} placeholder="Enter episode title" placeholderTextColor="#999" value={podcastTitle} onChangeText={setPodcastTitle} />
                 </View>
                 <View style={styles.modalInputGroup}>
-                  <Text style={styles.modalLabel}>Description</Text>
-                  <TextInput style={[styles.modalInput, styles.descriptionInput]} placeholder="Describe this episode" placeholderTextColor="#999" value={podcastDescription} onChangeText={setPodcastDescription} multiline textAlignVertical="top" maxLength={500} />
+                  <Text style={styles.modalLabel}>Podcast information</Text>
+                  <TextInput style={[styles.modalInput, styles.descriptionInput]} placeholder="Add episode information or an update" placeholderTextColor="#999" value={podcastDescription} onChangeText={setPodcastDescription} multiline textAlignVertical="top" maxLength={1000} />
                 </View>
                 <View style={styles.modalInputGroup}>
-                  <Text style={styles.modalLabel}>Podcast link</Text>
+                  <Text style={styles.modalLabel}>Podcast link (optional)</Text>
                   <TextInput style={styles.modalInput} placeholder="https://open.spotify.com/..." placeholderTextColor="#999" value={podcastUrl} onChangeText={setPodcastUrl} keyboardType="url" autoCapitalize="none" />
                 </View>
-                <View style={styles.modalButtons}>
-                  <Pressable style={[styles.modalButton, styles.modalCancelButton]} onPress={() => setIsPodcastModalVisible(false)}><Text style={styles.modalCancelText}>Cancel</Text></Pressable>
-                  <Pressable style={[styles.modalButton, styles.modalSaveButton]} onPress={() => void handleCreatePodcast()}><Text style={styles.modalSaveText}>Publish</Text></Pressable>
+                <View style={styles.modalInputGroup}>
+                  <Text style={styles.modalLabel}>Images (optional, up to 10)</Text>
+                  {podcastImageUris.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.podcastImageGallery}>{podcastImageUris.map((uri, index) => <View key={`${uri}-${index}`}><Image source={{ uri }} style={styles.podcastImagePreview} resizeMode="cover" /><Pressable accessibilityLabel={`Remove image ${index + 1}`} style={styles.removeImageButton} onPress={() => setPodcastImageUris(items => items.filter((_, itemIndex) => itemIndex !== index))}><MaterialIcons name="close" size={17} color="#FFF" /></Pressable></View>)}</ScrollView> : null}
+                  <View style={styles.podcastImageActions}>
+                    <Pressable style={styles.podcastImageButton} onPress={() => void choosePodcastImages()}><MaterialIcons name="add-photo-alternate" size={20} color="#087D97" /><Text style={styles.podcastImageButtonText}>{podcastImageUris.length ? 'Add more images' : 'Choose images'}</Text></Pressable>
+                    {podcastImageUris.length ? <Pressable onPress={() => setPodcastImageUris([])}><Text style={styles.removeImageText}>Remove all</Text></Pressable> : null}
+                  </View>
                 </View>
-              </View>
+                <View style={styles.modalButtons}>
+                  <Pressable disabled={isPublishingPodcast} style={[styles.modalButton, styles.modalCancelButton]} onPress={() => setIsPodcastModalVisible(false)}><Text style={styles.modalCancelText}>Cancel</Text></Pressable>
+                  <Pressable disabled={isPublishingPodcast} style={[styles.modalButton, styles.modalSaveButton, isPublishingPodcast && { opacity: 0.6 }]} onPress={() => void handleCreatePodcast()}><Text style={styles.modalSaveText}>{isPublishingPodcast ? 'Publishing...' : 'Publish'}</Text></Pressable>
+                </View>
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -966,6 +1018,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 7,
   },
+  podcastModalScroll: { maxHeight: 560 },
+  podcastImagePreview: {
+    width: 130,
+    height: 90,
+    borderRadius: 14,
+    backgroundColor: '#E5F0F3',
+  },
+  podcastImageGallery: { gap: 10, paddingBottom: 10 },
+  removeImageButton: { position: 'absolute', top: 5, right: 5, width: 25, height: 25, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.72)' },
+  podcastImageActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  podcastImageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderWidth: 1,
+    borderColor: '#B9D9DC',
+    borderRadius: 12,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    backgroundColor: '#F0F8F9',
+  },
+  podcastImageButtonText: { color: '#087D97', fontWeight: '700' },
+  removeImageText: { color: '#B42318', fontWeight: '700' },
   legacyCampaignDetails: {
     display: 'none',
   },
