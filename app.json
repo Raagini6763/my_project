@@ -20,9 +20,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": true,
-      "permissions": [
-        "android.permission.CAMERA"
-      ]
+      "permissions": ["android.permission.CAMERA"]
     },
     "web": {
       "output": "static",
@@ -56,10 +54,7 @@
       "reactCompiler": true
     },
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "462b8b46-42a0-4fc1-92f6-b35d0f8d27e3"
-      }
+      "router": {}
     }
   }
 }
