@@ -105,7 +105,23 @@ export default function DashboardAdminScreen() {
     }
   };
 
+  const performReject = async (storyId: string) => {
+    const success = await updateStoryStatus(storyId, 'rejected');
+    if (success) {
+      setPendingStories(prev => prev.filter(story => story.id !== storyId));
+      setAnalytics(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), rejected: prev.rejected + 1 }));
+      Alert.alert('Rejected', 'Story has been rejected.');
+    } else {
+      Alert.alert('Error', 'Could not reject story right now.');
+    }
+  };
+
   const handleReject = (storyId: string) => {
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm('Are you sure you want to reject this story?')) void performReject(storyId);
+      return;
+    }
+
     Alert.alert(
       'Reject Story',
       'Are you sure you want to reject this story?',
@@ -114,16 +130,7 @@ export default function DashboardAdminScreen() {
         {
           text: 'Reject',
           style: 'destructive',
-          onPress: async () => {
-            const success = await updateStoryStatus(storyId, 'rejected');
-            if (success) {
-              setPendingStories(prev => prev.filter(story => story.id !== storyId));
-              setAnalytics(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), rejected: prev.rejected + 1 }));
-              Alert.alert('Rejected', 'Story has been rejected.');
-            } else {
-              Alert.alert('Error', 'Could not reject story right now.');
-            }
-          },
+          onPress: () => void performReject(storyId),
         },
       ]
     );
@@ -346,10 +353,10 @@ export default function DashboardAdminScreen() {
         </View>
 
         {/* Tabs */}
-        <View style={styles.tabContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroller} contentContainerStyle={styles.tabContainer}>
           <Pressable style={[styles.tab, activeTab === 'analytics' && styles.activeTab]} onPress={() => void openAnalyticsTab()}>
             <MaterialIcons name="analytics" size={20} color={activeTab === 'analytics' ? '#087D97' : '#666'} />
-            <Text style={[styles.tabText, activeTab === 'analytics' && styles.activeTabText]}>Analytics</Text>
+            <Text numberOfLines={1} style={[styles.tabText, activeTab === 'analytics' && styles.activeTabText]}>Analytics</Text>
           </Pressable>
           <Pressable
             style={[styles.tab, activeTab === 'stories' && styles.activeTab]}
@@ -360,7 +367,7 @@ export default function DashboardAdminScreen() {
               size={20} 
               color={activeTab === 'stories' ? '#087D97' : '#666'} 
             />
-            <Text style={[styles.tabText, activeTab === 'stories' && styles.activeTabText]}>
+            <Text numberOfLines={1} style={[styles.tabText, activeTab === 'stories' && styles.activeTabText]}>
               Stories ({pendingCount})
             </Text>
           </Pressable>
@@ -373,15 +380,15 @@ export default function DashboardAdminScreen() {
               size={20} 
               color={activeTab === 'campaigns' ? '#087D97' : '#666'} 
             />
-            <Text style={[styles.tabText, activeTab === 'campaigns' && styles.activeTabText]}>
+            <Text numberOfLines={1} style={[styles.tabText, activeTab === 'campaigns' && styles.activeTabText]}>
               Campaigns
             </Text>
           </Pressable>
           <Pressable style={[styles.tab, activeTab === 'podcasts' && styles.activeTab]} onPress={() => setActiveTab('podcasts')}>
             <MaterialIcons name="podcasts" size={20} color={activeTab === 'podcasts' ? '#087D97' : '#666'} />
-            <Text style={[styles.tabText, activeTab === 'podcasts' && styles.activeTabText]}>Podcasts</Text>
+            <Text numberOfLines={1} style={[styles.tabText, activeTab === 'podcasts' && styles.activeTabText]}>Podcasts</Text>
           </Pressable>
-        </View>
+        </ScrollView>
 
         <ScrollView 
           showsVerticalScrollIndicator={false}
@@ -801,15 +808,20 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     paddingHorizontal: 22,
+    paddingRight: 30,
     gap: 8,
+  },
+  tabScroller: {
+    flexGrow: 0,
     marginBottom: 16,
   },
   tab: {
-    flex: 1,
+    minWidth: 122,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
     borderRadius: 12,
     backgroundColor: '#F0EDE8',
     gap: 8,

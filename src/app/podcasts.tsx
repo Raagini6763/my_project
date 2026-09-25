@@ -32,7 +32,6 @@ export default function PodcastsScreen() {
 
   const openPodcast = async (url: string) => {
     try {
-      if (!(await Linking.canOpenURL(url))) throw new Error('Unsupported URL');
       await Linking.openURL(url);
     } catch {
       Alert.alert('Invalid link', 'This podcast link cannot be opened.');

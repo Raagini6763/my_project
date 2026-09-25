@@ -31,7 +31,6 @@ export default function UploadScreen() {
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
   const [format, setFormat] = useState("");
-  const [writingContent, setWritingContent] = useState("");
   const [whatHappened, setWhatHappened] = useState("");
   const [whyMatters, setWhyMatters] = useState("");
   const [whatChange, setWhatChange] = useState("");
@@ -73,11 +72,8 @@ export default function UploadScreen() {
     setFormat(formatId);
 
     if (formatId === "writing") {
-      // Open notepad for writing
-      setCurrentQuestion("Write your story");
-      setCurrentField("writing");
-      setNoteContent(writingContent);
-      setIsNoteModalVisible(true);
+      setUploadedMediaUri(null);
+      setUploadedMediaType('text');
     } else if (formatId === "video" || formatId === "photos") {
       // Open camera
       const permission = await ImagePicker.requestCameraPermissionsAsync();
@@ -91,11 +87,6 @@ export default function UploadScreen() {
           const uri = result.assets?.[0]?.uri ?? null;
           setUploadedMediaUri(uri);
           setUploadedMediaType(formatId === "photos" ? "image" : "video");
-          Alert.alert(
-            "Success!",
-            `${formatId === "photos" ? "Photo" : "Video"} captured successfully!`,
-            [{ text: "OK" }]
-          );
         }
       } else {
         Alert.alert(
@@ -128,11 +119,6 @@ export default function UploadScreen() {
 
   const saveNote = () => {
     switch(currentField) {
-      case "writing":
-        setWritingContent(noteContent.trim());
-        setUploadedMediaType('text');
-        Alert.alert("Story Saved", "Your writing has been saved!");
-        break;
       case "whatHappened": setWhatHappened(noteContent); break;
       case "whyMatters": setWhyMatters(noteContent); break;
       case "whatChange": setWhatChange(noteContent); break;
@@ -154,11 +140,6 @@ export default function UploadScreen() {
       return;
     }
 
-    if (format === 'writing' && !writingContent.trim()) {
-      Alert.alert('Incomplete', 'Please write your story before publishing.');
-      return;
-    }
-
     if (format !== 'writing' && !uploadedMediaUri) {
       Alert.alert('Incomplete', 'Please record or select the media for this story format.');
       return;
@@ -167,7 +148,7 @@ export default function UploadScreen() {
     setIsSubmitting(true);
 
     try {
-      const storyBody = `${writingContent.trim() ? `${writingContent.trim()}\n\n` : ''}What happened: ${whatHappened}\n\nWhy it matters: ${whyMatters}\n\nWhat change: ${whatChange}\n\nHow others can help: ${howHelp}`;
+      const storyBody = `What happened: ${whatHappened}\n\nWhy it matters: ${whyMatters}\n\nWhat change: ${whatChange}\n\nHow others can help: ${howHelp}`;
       let refinedResult = { needsRefinement: false, refinedText: storyBody };
       try {
         refinedResult = await refineStoryText(storyBody);
@@ -191,7 +172,6 @@ export default function UploadScreen() {
 
       setTitle('');
       setFormat('');
-      setWritingContent('');
       setWhatHappened('');
       setWhyMatters('');
       setWhatChange('');
