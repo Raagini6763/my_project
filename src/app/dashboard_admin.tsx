@@ -1,13 +1,34 @@
-import { TranslatedText as Text } from '@/components/translated-text';
-import { TranslatedTextInput as TextInput } from '@/components/translated-text-input';
-import { createCampaign, createPodcast, fetchAdminAnalytics, fetchAdminProfile, fetchCampaigns, fetchPendingStories, fetchPublishedPodcasts, logoutAdmin, subscribeToAdminSession, updateAdminCredentials, updateStoryStatus } from '@/services/firebaseService';
-import { normalizeCampaignUrl } from '@/utils/validation';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { TranslatedText as Text } from "@/components/translated-text";
+import { TranslatedTextInput as TextInput } from "@/components/translated-text-input";
+import {
+    createCampaign,
+    createPodcast,
+    fetchAdminAnalytics,
+    fetchAdminProfile,
+    fetchCampaigns,
+    fetchPendingStories,
+    fetchPublishedPodcasts,
+    logoutAdmin,
+    subscribeToAdminSession,
+    updateAdminCredentials,
+    updateStoryStatus,
+} from "@/services/firebaseService";
+import { normalizeCampaignUrl } from "@/utils/validation";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+    Alert,
+    Image,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface PendingStory {
   id: string;
@@ -17,7 +38,7 @@ interface PendingStory {
   type: string;
   description: string;
   date: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: "pending" | "approved" | "rejected";
 }
 
 interface Campaign {
@@ -28,123 +49,171 @@ interface Campaign {
   joined: number;
   posts?: number;
   frequency?: string;
-  status: 'active' | 'draft' | 'completed';
+  status: "active" | "draft" | "completed";
   campaignUrl: string;
 }
 
-type Analytics = { submitted: number; pending: number; approved: number; rejected: number; campaigns: number; volunteers: number; writing: number; media: number };
-type Podcast = { id: string; title: string; description: string; listenUrl?: string | null; imageUrl?: string | null; imageUrls?: string[]; status: 'published' };
+type Analytics = {
+  submitted: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+  campaigns: number;
+  volunteers: number;
+  writing: number;
+  media: number;
+};
+type Podcast = {
+  id: string;
+  title: string;
+  description: string;
+  listenUrl?: string | null;
+  imageUrl?: string | null;
+  imageUrls?: string[];
+  status: "published";
+};
 
-const emptyAnalytics: Analytics = { submitted: 0, pending: 0, approved: 0, rejected: 0, campaigns: 0, volunteers: 0, writing: 0, media: 0 };
+const emptyAnalytics: Analytics = {
+  submitted: 0,
+  pending: 0,
+  approved: 0,
+  rejected: 0,
+  campaigns: 0,
+  volunteers: 0,
+  writing: 0,
+  media: 0,
+};
 
 export default function DashboardAdminScreen() {
-  const [activeTab, setActiveTab] = useState<'analytics' | 'stories' | 'campaigns' | 'podcasts'>('analytics');
+  const [activeTab, setActiveTab] = useState<
+    "analytics" | "stories" | "campaigns" | "podcasts"
+  >("analytics");
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isCampaignSuccessVisible, setIsCampaignSuccessVisible] = useState(false);
+  const [isCampaignSuccessVisible, setIsCampaignSuccessVisible] =
+    useState(false);
   const [isPodcastModalVisible, setIsPodcastModalVisible] = useState(false);
-  const [podcastTitle, setPodcastTitle] = useState('');
-  const [podcastDescription, setPodcastDescription] = useState('');
-  const [podcastUrl, setPodcastUrl] = useState('');
+  const [podcastTitle, setPodcastTitle] = useState("");
+  const [podcastDescription, setPodcastDescription] = useState("");
+  const [podcastUrl, setPodcastUrl] = useState("");
   const [podcastImageUris, setPodcastImageUris] = useState<string[]>([]);
   const [isPublishingPodcast, setIsPublishingPodcast] = useState(false);
-  const [campaignTitle, setCampaignTitle] = useState('');
-  const [campaignPlatform, setCampaignPlatform] = useState('');
-  const [campaignDescription, setCampaignDescription] = useState('');
-  const [campaignUrl, setCampaignUrl] = useState('');
-  const [isCredentialsModalVisible, setIsCredentialsModalVisible] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [campaignTitle, setCampaignTitle] = useState("");
+  const [campaignPlatform, setCampaignPlatform] = useState("");
+  const [campaignDescription, setCampaignDescription] = useState("");
+  const [campaignUrl, setCampaignUrl] = useState("");
+  const [isCredentialsModalVisible, setIsCredentialsModalVisible] =
+    useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [isUpdatingCredentials, setIsUpdatingCredentials] = useState(false);
 
   const [pendingStories, setPendingStories] = useState<PendingStory[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [podcasts, setPodcasts] = useState<Podcast[]>([]);
-  const [adminName, setAdminName] = useState('Admin');
+  const [adminName, setAdminName] = useState("Admin");
   const [analytics, setAnalytics] = useState<Analytics>(emptyAnalytics);
 
   useEffect(() => {
     const loadData = async () => {
-      const [storiesData, campaignsData, adminProfile, analyticsData, podcastData] = await Promise.all([
+      const [
+        storiesData,
+        campaignsData,
+        adminProfile,
+        analyticsData,
+        podcastData,
+      ] = await Promise.all([
         fetchPendingStories(),
         fetchCampaigns(),
         fetchAdminProfile(),
         fetchAdminAnalytics(),
-        fetchPublishedPodcasts().catch(error => {
-          console.warn('Admin podcast loading failed:', error);
+        fetchPublishedPodcasts().catch((error) => {
+          console.warn("Admin podcast loading failed:", error);
           return [];
         }),
       ]);
 
       setPendingStories(storiesData as PendingStory[]);
       setCampaigns(campaignsData as Campaign[]);
-      setAdminName(adminProfile?.name || 'Admin');
+      setAdminName(adminProfile?.name || "Admin");
       setAnalytics(analyticsData);
       setPodcasts(podcastData as Podcast[]);
     };
 
     const unsubscribe = subscribeToAdminSession((isAdmin) => {
       if (!isAdmin) {
-        router.replace('/login');
+        router.replace("/login");
         return;
       }
-      loadData().catch(() => Alert.alert('Error', 'Admin data could not be loaded.'));
+      loadData().catch(() =>
+        Alert.alert("Error", "Admin data could not be loaded."),
+      );
     });
     return unsubscribe;
   }, []);
 
   const handleApprove = async (storyId: string) => {
-    const success = await updateStoryStatus(storyId, 'approved');
+    const success = await updateStoryStatus(storyId, "approved");
     if (success) {
-      setPendingStories(prev => prev.filter(story => story.id !== storyId));
-      setAnalytics(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), approved: prev.approved + 1 }));
-      Alert.alert('Success', 'Story approved successfully!');
+      setPendingStories((prev) => prev.filter((story) => story.id !== storyId));
+      setAnalytics((prev) => ({
+        ...prev,
+        pending: Math.max(0, prev.pending - 1),
+        approved: prev.approved + 1,
+      }));
+      Alert.alert("Success", "Story approved successfully!");
     } else {
-      Alert.alert('Error', 'Could not approve story right now.');
+      Alert.alert("Error", "Could not approve story right now.");
     }
   };
 
   const performReject = async (storyId: string) => {
-    const success = await updateStoryStatus(storyId, 'rejected');
+    const success = await updateStoryStatus(storyId, "rejected");
     if (success) {
-      setPendingStories(prev => prev.filter(story => story.id !== storyId));
-      setAnalytics(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1), rejected: prev.rejected + 1 }));
-      Alert.alert('Rejected', 'Story has been rejected.');
+      setPendingStories((prev) => prev.filter((story) => story.id !== storyId));
+      setAnalytics((prev) => ({
+        ...prev,
+        pending: Math.max(0, prev.pending - 1),
+        rejected: prev.rejected + 1,
+      }));
+      Alert.alert("Rejected", "Story has been rejected.");
     } else {
-      Alert.alert('Error', 'Could not reject story right now.');
+      Alert.alert("Error", "Could not reject story right now.");
     }
   };
 
   const handleReject = (storyId: string) => {
-    if (Platform.OS === 'web') {
-      if (globalThis.confirm('Are you sure you want to reject this story?')) void performReject(storyId);
+    if (Platform.OS === "web") {
+      if (globalThis.confirm("Are you sure you want to reject this story?"))
+        void performReject(storyId);
       return;
     }
 
-    Alert.alert(
-      'Reject Story',
-      'Are you sure you want to reject this story?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: () => void performReject(storyId),
-        },
-      ]
-    );
+    Alert.alert("Reject Story", "Are you sure you want to reject this story?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Reject",
+        style: "destructive",
+        onPress: () => void performReject(storyId),
+      },
+    ]);
   };
 
   const handleCreateCampaign = async () => {
-    if (!campaignTitle.trim() || !campaignPlatform || !campaignDescription.trim() || !campaignUrl.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+    if (
+      !campaignTitle.trim() ||
+      !campaignPlatform ||
+      !campaignDescription.trim() ||
+      !campaignUrl.trim()
+    ) {
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
     const normalizedUrl = normalizeCampaignUrl(campaignUrl);
     if (!normalizedUrl) {
-      Alert.alert('Error', 'Please enter a valid campaign link.');
+      Alert.alert("Error", "Please enter a valid campaign link.");
       return;
     }
 
@@ -156,27 +225,32 @@ export default function DashboardAdminScreen() {
     });
 
     if (created) {
-      setCampaigns(prev => [...prev, created as Campaign]);
-      setAnalytics(prev => ({ ...prev, campaigns: prev.campaigns + 1 }));
-      setCampaignTitle('');
-      setCampaignPlatform('');
-      setCampaignDescription('');
-      setCampaignUrl('');
+      setCampaigns((prev) => [...prev, created as Campaign]);
+      setAnalytics((prev) => ({ ...prev, campaigns: prev.campaigns + 1 }));
+      setCampaignTitle("");
+      setCampaignPlatform("");
+      setCampaignDescription("");
+      setCampaignUrl("");
       setIsModalVisible(false);
       setIsCampaignSuccessVisible(true);
     } else {
-      Alert.alert('Error', 'Could not create campaign right now.');
+      Alert.alert("Error", "Could not create campaign right now.");
     }
   };
 
   const handleCreatePodcast = async () => {
     if (!podcastTitle.trim() || !podcastDescription.trim()) {
-      Alert.alert('Incomplete', 'Please add the podcast title and information.');
+      Alert.alert(
+        "Incomplete",
+        "Please add the podcast title and information.",
+      );
       return;
     }
-    const normalizedUrl = podcastUrl.trim() ? normalizeCampaignUrl(podcastUrl) : '';
+    const normalizedUrl = podcastUrl.trim()
+      ? normalizeCampaignUrl(podcastUrl)
+      : "";
     if (podcastUrl.trim() && !normalizedUrl) {
-      Alert.alert('Invalid link', 'Please enter a valid podcast link.');
+      Alert.alert("Invalid link", "Please enter a valid podcast link.");
       return;
     }
     try {
@@ -187,15 +261,21 @@ export default function DashboardAdminScreen() {
         listenUrl: normalizedUrl || undefined,
         imageUris: podcastImageUris,
       });
-      setPodcasts(items => [...items, created as Podcast]);
-      setPodcastTitle('');
-      setPodcastDescription('');
-      setPodcastUrl('');
+      setPodcasts((items) => [...items, created as Podcast]);
+      setPodcastTitle("");
+      setPodcastDescription("");
+      setPodcastUrl("");
       setPodcastImageUris([]);
       setIsPodcastModalVisible(false);
-      Alert.alert('Podcast published', 'The podcast is now visible in the Podcast section.');
+      Alert.alert(
+        "Podcast published",
+        "The podcast is now visible in the Podcast section.",
+      );
     } catch (error: any) {
-      Alert.alert('Unable to publish podcast', error?.message || 'Please try again.');
+      Alert.alert(
+        "Unable to publish podcast",
+        error?.message || "Please try again.",
+      );
     } finally {
       setIsPublishingPodcast(false);
     }
@@ -204,7 +284,10 @@ export default function DashboardAdminScreen() {
   const choosePodcastImages = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission required', 'Allow photo access to add a podcast image.');
+      Alert.alert(
+        "Permission required",
+        "Allow photo access to add a podcast image.",
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -214,39 +297,59 @@ export default function DashboardAdminScreen() {
       quality: 0.85,
     });
     if (!result.canceled) {
-      const selectedUris = result.assets.map(asset => asset.uri).filter(Boolean);
-      setPodcastImageUris(current => Array.from(new Set([...current, ...selectedUris])).slice(0, 10));
+      const selectedUris = result.assets
+        .map((asset) => asset.uri)
+        .filter(Boolean);
+      setPodcastImageUris((current) =>
+        Array.from(new Set([...current, ...selectedUris])).slice(0, 10),
+      );
     }
   };
 
   const closeCredentialsModal = () => {
     setIsCredentialsModalVisible(false);
-    setCurrentPassword('');
-    setNewEmail('');
-    setNewPassword('');
-    setConfirmNewPassword('');
+    setCurrentPassword("");
+    setNewEmail("");
+    setNewPassword("");
+    setConfirmNewPassword("");
   };
 
   const handleUpdateCredentials = async () => {
-    if (!currentPassword) return Alert.alert('Error', 'Enter your current password.');
-    if (!newEmail.trim() && !newPassword) return Alert.alert('Error', 'Enter a new email or password.');
-    if (newPassword && newPassword.length < 6) return Alert.alert('Error', 'The new password must be at least 6 characters.');
-    if (newPassword !== confirmNewPassword) return Alert.alert('Error', 'The new passwords do not match.');
+    if (!currentPassword)
+      return Alert.alert("Error", "Enter your current password.");
+    if (!newEmail.trim() && !newPassword)
+      return Alert.alert("Error", "Enter a new email or password.");
+    if (newPassword && newPassword.length < 6)
+      return Alert.alert(
+        "Error",
+        "The new password must be at least 6 characters.",
+      );
+    if (newPassword !== confirmNewPassword)
+      return Alert.alert("Error", "The new passwords do not match.");
 
     try {
       setIsUpdatingCredentials(true);
-      await updateAdminCredentials({ currentPassword, newEmail: newEmail.trim(), newPassword });
+      await updateAdminCredentials({
+        currentPassword,
+        newEmail: newEmail.trim(),
+        newPassword,
+      });
       closeCredentialsModal();
-      Alert.alert('Success', 'Admin credentials updated successfully.');
+      Alert.alert("Success", "Admin credentials updated successfully.");
     } catch (error: any) {
       const messages: Record<string, string> = {
-        'auth/invalid-credential': 'The current password is incorrect.',
-        'auth/wrong-password': 'The current password is incorrect.',
-        'auth/email-already-in-use': 'That email address is already in use.',
-        'auth/invalid-email': 'Enter a valid email address.',
-        'auth/weak-password': 'Choose a stronger password.',
+        "auth/invalid-credential": "The current password is incorrect.",
+        "auth/wrong-password": "The current password is incorrect.",
+        "auth/email-already-in-use": "That email address is already in use.",
+        "auth/invalid-email": "Enter a valid email address.",
+        "auth/weak-password": "Choose a stronger password.",
       };
-      Alert.alert('Update failed', messages[error?.code] || error?.message || 'Could not update admin credentials.');
+      Alert.alert(
+        "Update failed",
+        messages[error?.code] ||
+          error?.message ||
+          "Could not update admin credentials.",
+      );
     } finally {
       setIsUpdatingCredentials(false);
     }
@@ -255,67 +358,89 @@ export default function DashboardAdminScreen() {
   const performLogout = async () => {
     try {
       await logoutAdmin();
-      router.replace('/');
+      router.replace("/");
     } catch (error) {
-      console.warn('Admin logout failed:', error);
-      Alert.alert('Logout failed', 'Could not log out. Please try again.');
+      console.warn("Admin logout failed:", error);
+      Alert.alert("Logout failed", "Could not log out. Please try again.");
     }
   };
 
   const handleLogout = () => {
-    if (Platform.OS === 'web') {
-      if (globalThis.confirm('Are you sure you want to logout?')) void performLogout();
+    if (Platform.OS === "web") {
+      if (globalThis.confirm("Are you sure you want to logout?"))
+        void performLogout();
       return;
     }
 
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => void performLogout() },
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: () => void performLogout(),
+      },
     ]);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return '#FAD9DC';
-      case 'approved': return '#DCF8E4';
-      case 'rejected': return '#FFE5E5';
-      default: return '#F0EDE8';
+      case "pending":
+        return "#FAD9DC";
+      case "approved":
+        return "#DCF8E4";
+      case "rejected":
+        return "#FFE5E5";
+      default:
+        return "#F0EDE8";
     }
   };
 
   const getStatusTextColor = (status: string) => {
     switch (status) {
-      case 'pending': return '#B31217';
-      case 'approved': return '#1B8A43';
-      case 'rejected': return '#CC0000';
-      default: return '#666';
+      case "pending":
+        return "#B31217";
+      case "approved":
+        return "#1B8A43";
+      case "rejected":
+        return "#CC0000";
+      default:
+        return "#666";
     }
   };
 
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
-      case 'Instagram': return 'camera-alt';
-      case 'WhatsApp': return 'chat';
-      case 'Email': return 'email';
-      default: return 'campaign';
+      case "Instagram":
+        return "camera-alt";
+      case "WhatsApp":
+        return "chat";
+      case "Email":
+        return "email";
+      default:
+        return "campaign";
     }
   };
 
-  const pendingCount = pendingStories.filter(s => s.status === 'pending').length;
+  const pendingCount = pendingStories.filter(
+    (s) => s.status === "pending",
+  ).length;
 
   const openCampaignsTab = async () => {
-    setActiveTab('campaigns');
+    setActiveTab("campaigns");
     const latestCampaigns = await fetchCampaigns();
     setCampaigns(latestCampaigns as Campaign[]);
   };
 
   const openAnalyticsTab = async () => {
-    setActiveTab('analytics');
+    setActiveTab("analytics");
     try {
       setAnalytics(await fetchAdminAnalytics());
     } catch (error) {
-      console.warn('Admin analytics refresh failed:', error);
-      Alert.alert('Unable to refresh analytics', 'Please check your connection and try again.');
+      console.warn("Admin analytics refresh failed:", error);
+      Alert.alert(
+        "Unable to refresh analytics",
+        "Please check your connection and try again.",
+      );
     }
   };
 
@@ -328,11 +453,14 @@ export default function DashboardAdminScreen() {
             <Text style={styles.subGreeting}>Manage stories & campaigns</Text>
           </View>
           <View style={styles.headerActions}>
-            <Pressable style={styles.logoutButton} accessibilityLabel="Update admin credentials" onPress={() => setIsCredentialsModalVisible(true)}>
+            <Pressable
+              style={styles.logoutButton}
+              accessibilityLabel="Update admin credentials"
+              onPress={() => setIsCredentialsModalVisible(true)}
+            >
               <MaterialIcons name="manage-accounts" size={25} color="#087D97" />
             </Pressable>
-            <Pressable style={styles.logoutButton} onPress={handleLogout}
-            >
+            <Pressable style={styles.logoutButton} onPress={handleLogout}>
               <MaterialIcons name="logout" size={24} color="#666" />
             </Pressable>
           </View>
@@ -340,12 +468,12 @@ export default function DashboardAdminScreen() {
 
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
-          <View style={[styles.statCard, { backgroundColor: '#E5F0F3' }]}>
+          <View style={[styles.statCard, { backgroundColor: "#E5F0F3" }]}>
             <MaterialIcons name="pending-actions" size={28} color="#087D97" />
             <Text style={styles.statNumber}>{pendingCount}</Text>
             <Text style={styles.statLabel}>Pending Stories</Text>
           </View>
-          <View style={[styles.statCard, { backgroundColor: '#DCF8E4' }]}>
+          <View style={[styles.statCard, { backgroundColor: "#DCF8E4" }]}>
             <MaterialIcons name="campaign" size={28} color="#1B8A43" />
             <Text style={styles.statNumber}>{campaigns.length}</Text>
             <Text style={styles.statLabel}>Active Campaigns</Text>
@@ -353,65 +481,105 @@ export default function DashboardAdminScreen() {
         </View>
 
         {/* Tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroller} contentContainerStyle={styles.tabContainer}>
-          <Pressable style={[styles.tab, activeTab === 'analytics' && styles.activeTab]} onPress={() => void openAnalyticsTab()}>
-            <MaterialIcons name="analytics" size={20} color={activeTab === 'analytics' ? '#087D97' : '#666'} />
-            <Text numberOfLines={1} style={[styles.tabText, activeTab === 'analytics' && styles.activeTabText]}>Analytics</Text>
+        <View style={styles.tabContainer}>
+          <Pressable
+            style={[styles.tab, activeTab === "analytics" && styles.activeTab]}
+            onPress={() => void openAnalyticsTab()}
+          >
+            <MaterialIcons
+              name="analytics"
+              size={20}
+              color={activeTab === "analytics" ? "#087D97" : "#666"}
+            />
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "analytics" && styles.activeTabText,
+              ]}
+            >
+              Analytics
+            </Text>
           </Pressable>
           <Pressable
-            style={[styles.tab, activeTab === 'stories' && styles.activeTab]}
-            onPress={() => setActiveTab('stories')}
+            style={[styles.tab, activeTab === "stories" && styles.activeTab]}
+            onPress={() => setActiveTab("stories")}
           >
-            <MaterialIcons 
-              name="menu-book" 
-              size={20} 
-              color={activeTab === 'stories' ? '#087D97' : '#666'} 
+            <MaterialIcons
+              name="menu-book"
+              size={20}
+              color={activeTab === "stories" ? "#087D97" : "#666"}
             />
-            <Text numberOfLines={1} style={[styles.tabText, activeTab === 'stories' && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "stories" && styles.activeTabText,
+              ]}
+            >
               Stories ({pendingCount})
             </Text>
           </Pressable>
           <Pressable
-            style={[styles.tab, activeTab === 'campaigns' && styles.activeTab]}
+            style={[styles.tab, activeTab === "campaigns" && styles.activeTab]}
             onPress={() => void openCampaignsTab()}
           >
-            <MaterialIcons 
-              name="campaign" 
-              size={20} 
-              color={activeTab === 'campaigns' ? '#087D97' : '#666'} 
+            <MaterialIcons
+              name="campaign"
+              size={20}
+              color={activeTab === "campaigns" ? "#087D97" : "#666"}
             />
-            <Text numberOfLines={1} style={[styles.tabText, activeTab === 'campaigns' && styles.activeTabText]}>
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "campaigns" && styles.activeTabText,
+              ]}
+            >
               Campaigns
             </Text>
           </Pressable>
-          <Pressable style={[styles.tab, activeTab === 'podcasts' && styles.activeTab]} onPress={() => setActiveTab('podcasts')}>
-            <MaterialIcons name="podcasts" size={20} color={activeTab === 'podcasts' ? '#087D97' : '#666'} />
-            <Text numberOfLines={1} style={[styles.tabText, activeTab === 'podcasts' && styles.activeTabText]}>Podcasts</Text>
+          <Pressable
+            style={[styles.tab, activeTab === "podcasts" && styles.activeTab]}
+            onPress={() => setActiveTab("podcasts")}
+          >
+            <MaterialIcons
+              name="podcasts"
+              size={20}
+              color={activeTab === "podcasts" ? "#087D97" : "#666"}
+            />
+            <Text
+              style={[
+                styles.tabText,
+                activeTab === "podcasts" && styles.activeTabText,
+              ]}
+            >
+              Podcasts
+            </Text>
           </Pressable>
-        </ScrollView>
+        </View>
 
-        <ScrollView 
+        <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {activeTab === 'analytics' ? (
+          {activeTab === "analytics" ? (
             <View>
               <View style={styles.analyticsHeadingRow}>
                 <MaterialIcons name="bar-chart" size={25} color="#087D97" />
                 <Text style={styles.analyticsEyebrow}>Private admin area</Text>
               </View>
               <Text style={styles.analyticsTitle}>Analytics dashboard</Text>
-              <Text style={styles.analyticsSubtitle}>Program activity at a glance</Text>
+              <Text style={styles.analyticsSubtitle}>
+                Program activity at a glance
+              </Text>
               <View style={styles.analyticsGrid}>
                 {[
-                  ['Stories submitted', analytics.submitted],
-                  ['Awaiting review', analytics.pending],
-                  ['Stories approved', analytics.approved],
-                  ['Stories rejected', analytics.rejected],
-                  ['Active campaigns', analytics.campaigns],
-                  ['Campaign volunteers', analytics.volunteers],
-                  ['Writing stories', analytics.writing],
-                  ['Media stories', analytics.media],
+                  ["Stories submitted", analytics.submitted],
+                  ["Awaiting review", analytics.pending],
+                  ["Stories approved", analytics.approved],
+                  ["Stories rejected", analytics.rejected],
+                  ["Active campaigns", analytics.campaigns],
+                  ["Campaign volunteers", analytics.volunteers],
+                  ["Writing stories", analytics.writing],
+                  ["Media stories", analytics.media],
                 ].map(([label, value]) => (
                   <View key={String(label)} style={styles.analyticsCard}>
                     <Text style={styles.analyticsNumber}>{value}</Text>
@@ -422,9 +590,32 @@ export default function DashboardAdminScreen() {
               <View style={styles.qualityCard}>
                 <Text style={styles.qualityTitle}>Participation quality</Text>
                 {[
-                  ['Approval rate', analytics.submitted ? Math.round((analytics.approved / analytics.submitted) * 100) : 0],
-                  ['Review completion', analytics.submitted ? Math.round(((analytics.approved + analytics.rejected) / analytics.submitted) * 100) : 0],
-                  ['Media participation', analytics.submitted ? Math.round((analytics.media / analytics.submitted) * 100) : 0],
+                  [
+                    "Approval rate",
+                    analytics.submitted
+                      ? Math.round(
+                          (analytics.approved / analytics.submitted) * 100,
+                        )
+                      : 0,
+                  ],
+                  [
+                    "Review completion",
+                    analytics.submitted
+                      ? Math.round(
+                          ((analytics.approved + analytics.rejected) /
+                            analytics.submitted) *
+                            100,
+                        )
+                      : 0,
+                  ],
+                  [
+                    "Media participation",
+                    analytics.submitted
+                      ? Math.round(
+                          (analytics.media / analytics.submitted) * 100,
+                        )
+                      : 0,
+                  ],
                 ].map(([label, value]) => (
                   <View key={String(label)} style={styles.qualityRow}>
                     <Text style={styles.qualityLabel}>{label}</Text>
@@ -433,32 +624,58 @@ export default function DashboardAdminScreen() {
                 ))}
               </View>
             </View>
-          ) : activeTab === 'stories' ? (
+          ) : activeTab === "stories" ? (
             <View>
-              {pendingStories.filter(s => s.status === 'pending').length === 0 ? (
+              {pendingStories.filter((s) => s.status === "pending").length ===
+              0 ? (
                 <View style={styles.emptyState}>
-                  <MaterialIcons name="check-circle" size={64} color="#1B8A43" />
-                  <Text style={styles.emptyStateText}>All stories reviewed!</Text>
-                  <Text style={styles.emptyStateSubtext}>No pending stories to approve.</Text>
+                  <MaterialIcons
+                    name="check-circle"
+                    size={64}
+                    color="#1B8A43"
+                  />
+                  <Text style={styles.emptyStateText}>
+                    All stories reviewed!
+                  </Text>
+                  <Text style={styles.emptyStateSubtext}>
+                    No pending stories to approve.
+                  </Text>
                 </View>
               ) : (
                 pendingStories
-                  .filter(s => s.status === 'pending')
+                  .filter((s) => s.status === "pending")
                   .map((story) => (
                     <View key={story.id} style={styles.storyCard}>
                       <View style={styles.storyHeader}>
                         <Text style={styles.storyTitle}>{story.title}</Text>
-                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(story.status) }]}>
-                          <Text style={[styles.statusText, { color: getStatusTextColor(story.status) }]}>
-                            {story.status.charAt(0).toUpperCase() + story.status.slice(1)}
+                        <View
+                          style={[
+                            styles.statusBadge,
+                            { backgroundColor: getStatusColor(story.status) },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.statusText,
+                              { color: getStatusTextColor(story.status) },
+                            ]}
+                          >
+                            {story.status.charAt(0).toUpperCase() +
+                              story.status.slice(1)}
                           </Text>
                         </View>
                       </View>
                       <Text style={styles.storyAuthor}>By {story.author}</Text>
-                      <Text style={styles.storyDescription}>{story.description}</Text>
+                      <Text style={styles.storyDescription}>
+                        {story.description}
+                      </Text>
                       <View style={styles.storyMeta}>
                         <View style={styles.metaItem}>
-                          <MaterialIcons name="location-on" size={16} color="#666" />
+                          <MaterialIcons
+                            name="location-on"
+                            size={16}
+                            color="#666"
+                          />
                           <Text style={styles.metaText}>{story.location}</Text>
                         </View>
                         <View style={styles.metaItem}>
@@ -466,19 +683,23 @@ export default function DashboardAdminScreen() {
                           <Text style={styles.metaText}>{story.type}</Text>
                         </View>
                         <View style={styles.metaItem}>
-                          <MaterialIcons name="calendar-today" size={16} color="#666" />
+                          <MaterialIcons
+                            name="calendar-today"
+                            size={16}
+                            color="#666"
+                          />
                           <Text style={styles.metaText}>{story.date}</Text>
                         </View>
                       </View>
                       <View style={styles.actionButtons}>
-                        <Pressable 
+                        <Pressable
                           style={[styles.actionButton, styles.approveButton]}
                           onPress={() => handleApprove(story.id)}
                         >
                           <MaterialIcons name="check" size={20} color="#FFF" />
                           <Text style={styles.actionButtonText}>Approve</Text>
                         </Pressable>
-                        <Pressable 
+                        <Pressable
                           style={[styles.actionButton, styles.rejectButton]}
                           onPress={() => handleReject(story.id)}
                         >
@@ -490,37 +711,54 @@ export default function DashboardAdminScreen() {
                   ))
               )}
             </View>
-          ) : activeTab === 'campaigns' ? (
+          ) : activeTab === "campaigns" ? (
             <View>
-              <Pressable 
+              <Pressable
                 style={styles.createCampaignButton}
                 onPress={() => setIsModalVisible(true)}
               >
                 <MaterialIcons name="add" size={24} color="#FFF" />
-                <Text style={styles.createCampaignText}>Create New Campaign</Text>
+                <Text style={styles.createCampaignText}>
+                  Create New Campaign
+                </Text>
               </Pressable>
 
               {campaigns.map((campaign) => (
                 <View key={campaign.id} style={styles.campaignCard}>
                   <View style={styles.campaignHeader}>
                     <View style={styles.campaignIconContainer}>
-                      <MaterialIcons 
-                        name={getPlatformIcon(campaign.platform)} 
-                        size={24} 
-                        color="#087D97" 
+                      <MaterialIcons
+                        name={getPlatformIcon(campaign.platform)}
+                        size={24}
+                        color="#087D97"
                       />
                     </View>
                     <View style={styles.campaignInfo}>
                       <Text style={styles.campaignTitle}>{campaign.title}</Text>
-                      <Text style={styles.campaignDetails}>{campaign.description || 'No description provided.'}</Text>
-                      <Text style={styles.campaignVolunteerCount}>{Number(campaign.joined) || 0} volunteers</Text>
-                      <Text style={[styles.campaignDetails, styles.legacyCampaignDetails]}>
+                      <Text style={styles.campaignDetails}>
+                        {campaign.description || "No description provided."}
+                      </Text>
+                      <Text style={styles.campaignVolunteerCount}>
+                        {Number(campaign.joined) || 0} volunteers
+                      </Text>
+                      <Text
+                        style={[
+                          styles.campaignDetails,
+                          styles.legacyCampaignDetails,
+                        ]}
+                      >
                         {campaign.posts} posts • {campaign.frequency}
                       </Text>
                     </View>
-                    <View style={[styles.campaignStatus, { backgroundColor: '#DCF8E4' }]}>
+                    <View
+                      style={[
+                        styles.campaignStatus,
+                        { backgroundColor: "#DCF8E4" },
+                      ]}
+                    >
                       <Text style={styles.campaignStatusText}>
-                        {campaign.status.charAt(0).toUpperCase() + campaign.status.slice(1)}
+                        {campaign.status.charAt(0).toUpperCase() +
+                          campaign.status.slice(1)}
                       </Text>
                     </View>
                   </View>
@@ -529,20 +767,47 @@ export default function DashboardAdminScreen() {
             </View>
           ) : (
             <View>
-              <Pressable style={styles.createCampaignButton} onPress={() => setIsPodcastModalVisible(true)}>
+              <Pressable
+                style={styles.createCampaignButton}
+                onPress={() => setIsPodcastModalVisible(true)}
+              >
                 <MaterialIcons name="add" size={24} color="#FFF" />
                 <Text style={styles.createCampaignText}>Add Podcast</Text>
               </Pressable>
-              {podcasts.length === 0 && <Text style={styles.emptyStateSubtext}>No podcast episodes published yet.</Text>}
-              {podcasts.map(podcast => (
+              {podcasts.length === 0 && (
+                <Text style={styles.emptyStateSubtext}>
+                  No podcast episodes published yet.
+                </Text>
+              )}
+              {podcasts.map((podcast) => (
                 <View key={podcast.id} style={styles.campaignCard}>
                   <View style={styles.campaignHeader}>
-                    <View style={styles.campaignIconContainer}><MaterialIcons name="podcasts" size={24} color="#087D97" /></View>
+                    <View style={styles.campaignIconContainer}>
+                      <MaterialIcons
+                        name="podcasts"
+                        size={24}
+                        color="#087D97"
+                      />
+                    </View>
                     <View style={styles.campaignInfo}>
                       <Text style={styles.campaignTitle}>{podcast.title}</Text>
-                      <Text style={styles.campaignDetails}>{podcast.description}</Text>
-                      {podcast.listenUrl ? <Text style={styles.podcastLink} numberOfLines={1}>{podcast.listenUrl}</Text> : null}
-                      {(podcast.imageUrls?.length || podcast.imageUrl) ? <Text style={styles.podcastLink}>{podcast.imageUrls?.length || 1} image{(podcast.imageUrls?.length || 1) === 1 ? '' : 's'} added</Text> : null}
+                      <Text style={styles.campaignDetails}>
+                        {podcast.description}
+                      </Text>
+                      {podcast.listenUrl ? (
+                        <Text style={styles.podcastLink} numberOfLines={1}>
+                          {podcast.listenUrl}
+                        </Text>
+                      ) : null}
+                      {podcast.imageUrls?.length || podcast.imageUrl ? (
+                        <Text style={styles.podcastLink}>
+                          {podcast.imageUrls?.length || 1} image
+                          {(podcast.imageUrls?.length || 1) === 1
+                            ? ""
+                            : "s"}{" "}
+                          added
+                        </Text>
+                      ) : null}
                     </View>
                   </View>
                 </View>
@@ -582,25 +847,29 @@ export default function DashboardAdminScreen() {
                 <View style={styles.modalInputGroup}>
                   <Text style={styles.modalLabel}>Platform</Text>
                   <View style={styles.platformButtons}>
-                    {['Instagram', 'WhatsApp', 'Email', 'Community'].map((platform) => (
-                      <Pressable
-                        key={platform}
-                        style={[
-                          styles.platformButton,
-                          campaignPlatform === platform && styles.platformButtonActive,
-                        ]}
-                        onPress={() => setCampaignPlatform(platform)}
-                      >
-                        <Text 
+                    {["Instagram", "WhatsApp", "Email", "Community"].map(
+                      (platform) => (
+                        <Pressable
+                          key={platform}
                           style={[
-                            styles.platformButtonText,
-                            campaignPlatform === platform && styles.platformButtonTextActive,
+                            styles.platformButton,
+                            campaignPlatform === platform &&
+                              styles.platformButtonActive,
                           ]}
+                          onPress={() => setCampaignPlatform(platform)}
                         >
-                          {platform}
-                        </Text>
-                      </Pressable>
-                    ))}
+                          <Text
+                            style={[
+                              styles.platformButtonText,
+                              campaignPlatform === platform &&
+                                styles.platformButtonTextActive,
+                            ]}
+                          >
+                            {platform}
+                          </Text>
+                        </Pressable>
+                      ),
+                    )}
                   </View>
                 </View>
 
@@ -632,13 +901,13 @@ export default function DashboardAdminScreen() {
                 </View>
 
                 <View style={styles.modalButtons}>
-                  <Pressable 
+                  <Pressable
                     style={[styles.modalButton, styles.modalCancelButton]}
                     onPress={() => setIsModalVisible(false)}
                   >
                     <Text style={styles.modalCancelText}>Cancel</Text>
                   </Pressable>
-                  <Pressable 
+                  <Pressable
                     style={[styles.modalButton, styles.modalSaveButton]}
                     onPress={handleCreateCampaign}
                   >
@@ -650,59 +919,180 @@ export default function DashboardAdminScreen() {
           </View>
         </Modal>
 
-        <Modal visible={isPodcastModalVisible} animationType="slide" transparent onRequestClose={() => setIsPodcastModalVisible(false)}>
+        <Modal
+          visible={isPodcastModalVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setIsPodcastModalVisible(false)}
+        >
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Add Podcast</Text>
-                <Pressable onPress={() => setIsPodcastModalVisible(false)}><MaterialIcons name="close" size={24} color="#333" /></Pressable>
+                <Pressable onPress={() => setIsPodcastModalVisible(false)}>
+                  <MaterialIcons name="close" size={24} color="#333" />
+                </Pressable>
               </View>
-              <ScrollView style={styles.podcastModalScroll} contentContainerStyle={styles.modalForm} showsVerticalScrollIndicator={false}>
+              <ScrollView
+                style={styles.podcastModalScroll}
+                contentContainerStyle={styles.modalForm}
+                showsVerticalScrollIndicator={false}
+              >
                 <View style={styles.modalInputGroup}>
                   <Text style={styles.modalLabel}>Podcast title</Text>
-                  <TextInput style={styles.modalInput} placeholder="Enter episode title" placeholderTextColor="#999" value={podcastTitle} onChangeText={setPodcastTitle} />
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="Enter episode title"
+                    placeholderTextColor="#999"
+                    value={podcastTitle}
+                    onChangeText={setPodcastTitle}
+                  />
                 </View>
                 <View style={styles.modalInputGroup}>
                   <Text style={styles.modalLabel}>Podcast information</Text>
-                  <TextInput style={[styles.modalInput, styles.descriptionInput]} placeholder="Add episode information or an update" placeholderTextColor="#999" value={podcastDescription} onChangeText={setPodcastDescription} multiline textAlignVertical="top" maxLength={1000} />
+                  <TextInput
+                    style={[styles.modalInput, styles.descriptionInput]}
+                    placeholder="Add episode information or an update"
+                    placeholderTextColor="#999"
+                    value={podcastDescription}
+                    onChangeText={setPodcastDescription}
+                    multiline
+                    textAlignVertical="top"
+                    maxLength={1000}
+                  />
                 </View>
                 <View style={styles.modalInputGroup}>
                   <Text style={styles.modalLabel}>Podcast link (optional)</Text>
-                  <TextInput style={styles.modalInput} placeholder="https://open.spotify.com/..." placeholderTextColor="#999" value={podcastUrl} onChangeText={setPodcastUrl} keyboardType="url" autoCapitalize="none" />
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="https://open.spotify.com/..."
+                    placeholderTextColor="#999"
+                    value={podcastUrl}
+                    onChangeText={setPodcastUrl}
+                    keyboardType="url"
+                    autoCapitalize="none"
+                  />
                 </View>
                 <View style={styles.modalInputGroup}>
-                  <Text style={styles.modalLabel}>Images (optional, up to 10)</Text>
-                  {podcastImageUris.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.podcastImageGallery}>{podcastImageUris.map((uri, index) => <View key={`${uri}-${index}`}><Image source={{ uri }} style={styles.podcastImagePreview} resizeMode="cover" /><Pressable accessibilityLabel={`Remove image ${index + 1}`} style={styles.removeImageButton} onPress={() => setPodcastImageUris(items => items.filter((_, itemIndex) => itemIndex !== index))}><MaterialIcons name="close" size={17} color="#FFF" /></Pressable></View>)}</ScrollView> : null}
+                  <Text style={styles.modalLabel}>
+                    Images (optional, up to 10)
+                  </Text>
+                  {podcastImageUris.length ? (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.podcastImageGallery}
+                    >
+                      {podcastImageUris.map((uri, index) => (
+                        <View key={`${uri}-${index}`}>
+                          <Image
+                            source={{ uri }}
+                            style={styles.podcastImagePreview}
+                            resizeMode="cover"
+                          />
+                          <Pressable
+                            accessibilityLabel={`Remove image ${index + 1}`}
+                            style={styles.removeImageButton}
+                            onPress={() =>
+                              setPodcastImageUris((items) =>
+                                items.filter(
+                                  (_, itemIndex) => itemIndex !== index,
+                                ),
+                              )
+                            }
+                          >
+                            <MaterialIcons
+                              name="close"
+                              size={17}
+                              color="#FFF"
+                            />
+                          </Pressable>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  ) : null}
                   <View style={styles.podcastImageActions}>
-                    <Pressable style={styles.podcastImageButton} onPress={() => void choosePodcastImages()}><MaterialIcons name="add-photo-alternate" size={20} color="#087D97" /><Text style={styles.podcastImageButtonText}>{podcastImageUris.length ? 'Add more images' : 'Choose images'}</Text></Pressable>
-                    {podcastImageUris.length ? <Pressable onPress={() => setPodcastImageUris([])}><Text style={styles.removeImageText}>Remove all</Text></Pressable> : null}
+                    <Pressable
+                      style={styles.podcastImageButton}
+                      onPress={() => void choosePodcastImages()}
+                    >
+                      <MaterialIcons
+                        name="add-photo-alternate"
+                        size={20}
+                        color="#087D97"
+                      />
+                      <Text style={styles.podcastImageButtonText}>
+                        {podcastImageUris.length
+                          ? "Add more images"
+                          : "Choose images"}
+                      </Text>
+                    </Pressable>
+                    {podcastImageUris.length ? (
+                      <Pressable onPress={() => setPodcastImageUris([])}>
+                        <Text style={styles.removeImageText}>Remove all</Text>
+                      </Pressable>
+                    ) : null}
                   </View>
                 </View>
                 <View style={styles.modalButtons}>
-                  <Pressable disabled={isPublishingPodcast} style={[styles.modalButton, styles.modalCancelButton]} onPress={() => setIsPodcastModalVisible(false)}><Text style={styles.modalCancelText}>Cancel</Text></Pressable>
-                  <Pressable disabled={isPublishingPodcast} style={[styles.modalButton, styles.modalSaveButton, isPublishingPodcast && { opacity: 0.6 }]} onPress={() => void handleCreatePodcast()}><Text style={styles.modalSaveText}>{isPublishingPodcast ? 'Publishing...' : 'Publish'}</Text></Pressable>
+                  <Pressable
+                    disabled={isPublishingPodcast}
+                    style={[styles.modalButton, styles.modalCancelButton]}
+                    onPress={() => setIsPodcastModalVisible(false)}
+                  >
+                    <Text style={styles.modalCancelText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    disabled={isPublishingPodcast}
+                    style={[
+                      styles.modalButton,
+                      styles.modalSaveButton,
+                      isPublishingPodcast && { opacity: 0.6 },
+                    ]}
+                    onPress={() => void handleCreatePodcast()}
+                  >
+                    <Text style={styles.modalSaveText}>
+                      {isPublishingPodcast ? "Publishing..." : "Publish"}
+                    </Text>
+                  </Pressable>
                 </View>
               </ScrollView>
             </View>
           </View>
         </Modal>
 
-        <Modal visible={isCampaignSuccessVisible} animationType="fade" transparent onRequestClose={() => setIsCampaignSuccessVisible(false)}>
+        <Modal
+          visible={isCampaignSuccessVisible}
+          animationType="fade"
+          transparent
+          onRequestClose={() => setIsCampaignSuccessVisible(false)}
+        >
           <View style={styles.modalContainer}>
             <View style={[styles.modalContent, styles.successModalContent]}>
               <View style={styles.successIcon}>
                 <MaterialIcons name="check" size={48} color="#FFF" />
               </View>
               <Text style={styles.successTitle}>Campaign created</Text>
-              <Text style={styles.successMessage}>The campaign was created successfully and is now visible to users.</Text>
-              <Pressable style={styles.successButton} onPress={() => setIsCampaignSuccessVisible(false)}>
+              <Text style={styles.successMessage}>
+                The campaign was created successfully and is now visible to
+                users.
+              </Text>
+              <Pressable
+                style={styles.successButton}
+                onPress={() => setIsCampaignSuccessVisible(false)}
+              >
                 <Text style={styles.successButtonText}>Done</Text>
               </Pressable>
             </View>
           </View>
         </Modal>
 
-        <Modal visible={isCredentialsModalVisible} animationType="slide" transparent onRequestClose={closeCredentialsModal}>
+        <Modal
+          visible={isCredentialsModalVisible}
+          animationType="slide"
+          transparent
+          onRequestClose={closeCredentialsModal}
+        >
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
@@ -714,27 +1104,65 @@ export default function DashboardAdminScreen() {
               <View style={styles.modalForm}>
                 <View style={styles.modalInputGroup}>
                   <Text style={styles.modalLabel}>Current password</Text>
-                  <TextInput style={styles.modalInput} value={currentPassword} onChangeText={setCurrentPassword} secureTextEntry autoCapitalize="none" />
+                  <TextInput
+                    style={styles.modalInput}
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                  />
                 </View>
 
                 <View style={styles.modalInputGroup}>
                   <Text style={styles.modalLabel}>New email (optional)</Text>
-                  <TextInput style={styles.modalInput} value={newEmail} onChangeText={setNewEmail} keyboardType="email-address" autoCapitalize="none" />
+                  <TextInput
+                    style={styles.modalInput}
+                    value={newEmail}
+                    onChangeText={setNewEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
                 </View>
                 <View style={styles.modalInputGroup}>
                   <Text style={styles.modalLabel}>New password (optional)</Text>
-                  <TextInput style={styles.modalInput} value={newPassword} onChangeText={setNewPassword} secureTextEntry autoCapitalize="none" />
+                  <TextInput
+                    style={styles.modalInput}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                  />
                 </View>
                 <View style={styles.modalInputGroup}>
                   <Text style={styles.modalLabel}>Confirm new password</Text>
-                  <TextInput style={styles.modalInput} value={confirmNewPassword} onChangeText={setConfirmNewPassword} secureTextEntry autoCapitalize="none" />
+                  <TextInput
+                    style={styles.modalInput}
+                    value={confirmNewPassword}
+                    onChangeText={setConfirmNewPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                  />
                 </View>
                 <View style={styles.modalButtons}>
-                  <Pressable style={[styles.modalButton, styles.modalCancelButton]} onPress={closeCredentialsModal} disabled={isUpdatingCredentials}>
+                  <Pressable
+                    style={[styles.modalButton, styles.modalCancelButton]}
+                    onPress={closeCredentialsModal}
+                    disabled={isUpdatingCredentials}
+                  >
                     <Text style={styles.modalCancelText}>Cancel</Text>
                   </Pressable>
-                  <Pressable style={[styles.modalButton, styles.modalSaveButton, isUpdatingCredentials && styles.disabledButton]} onPress={handleUpdateCredentials} disabled={isUpdatingCredentials}>
-                    <Text style={styles.modalSaveText}>{isUpdatingCredentials ? 'Updating...' : 'Update'}</Text>
+                  <Pressable
+                    style={[
+                      styles.modalButton,
+                      styles.modalSaveButton,
+                      isUpdatingCredentials && styles.disabledButton,
+                    ]}
+                    onPress={handleUpdateCredentials}
+                    disabled={isUpdatingCredentials}
+                  >
+                    <Text style={styles.modalSaveText}>
+                      {isUpdatingCredentials ? "Updating..." : "Update"}
+                    </Text>
                   </Pressable>
                 </View>
               </View>
@@ -749,41 +1177,41 @@ export default function DashboardAdminScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FCF9F5',
+    backgroundColor: "#FCF9F5",
   },
   safeArea: {
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 22,
     paddingTop: 12,
     paddingBottom: 20,
   },
   greeting: {
     fontSize: 24,
-    fontWeight: '800',
-    color: '#1D2530',
+    fontWeight: "800",
+    color: "#1D2530",
   },
   subGreeting: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginTop: 2,
   },
   logoutButton: {
     padding: 8,
   },
   headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   disabledButton: {
     opacity: 0.6,
   },
   statsContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 22,
     gap: 12,
     marginBottom: 20,
@@ -792,86 +1220,132 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 16,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   statNumber: {
     fontSize: 28,
-    fontWeight: '800',
-    color: '#1D2530',
+    fontWeight: "800",
+    color: "#1D2530",
     marginTop: 4,
   },
   statLabel: {
     fontSize: 13,
-    color: '#666',
+    color: "#666",
     marginTop: 2,
   },
   tabContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
+    flexWrap: "wrap",
     paddingHorizontal: 22,
-    paddingRight: 30,
     gap: 8,
-  },
-  tabScroller: {
-    flexGrow: 0,
     marginBottom: 16,
   },
   tab: {
-    minWidth: 122,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 11,
-    paddingHorizontal: 14,
+    flexBasis: "48%",
+    flexGrow: 1,
+    minWidth: 0,
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 10,
     borderRadius: 12,
-    backgroundColor: '#F0EDE8',
-    gap: 8,
+    backgroundColor: "#F0EDE8",
+    gap: 4,
   },
   activeTab: {
-    backgroundColor: '#E5F0F3',
+    backgroundColor: "#E5F0F3",
   },
   tabText: {
+    width: "100%",
     fontSize: 15,
-    fontWeight: '600',
-    color: '#666',
+    fontWeight: "600",
+    color: "#666",
+    textAlign: "center",
   },
   activeTabText: {
-    color: '#087D97',
+    color: "#087D97",
   },
   scrollContent: {
     paddingHorizontal: 22,
     paddingBottom: 20,
   },
-  analyticsHeadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  analyticsEyebrow: { color: '#087D97', fontSize: 16, fontWeight: '700' },
-  analyticsTitle: { color: '#1D2530', fontSize: 28, fontWeight: '800', marginTop: 12 },
-  analyticsSubtitle: { color: '#666', fontSize: 16, marginTop: 4, marginBottom: 20 },
-  analyticsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  analyticsCard: { width: '48%', minHeight: 120, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2DDD4', borderRadius: 18, padding: 18, justifyContent: 'center' },
-  analyticsNumber: { color: '#087D97', fontSize: 31, fontWeight: '800' },
-  analyticsLabel: { color: '#5B6470', fontSize: 15, lineHeight: 20, marginTop: 10 },
-  qualityCard: { backgroundColor: '#E2EFF0', borderWidth: 1, borderColor: '#A9CDD1', borderRadius: 20, padding: 20, marginTop: 20 },
-  qualityTitle: { color: '#1D2530', fontSize: 18, fontWeight: '800', marginBottom: 14 },
-  qualityRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7 },
-  qualityLabel: { color: '#5B6470', fontSize: 15 },
-  qualityValue: { color: '#1D2530', fontSize: 16, fontWeight: '700' },
+  analyticsHeadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  analyticsEyebrow: { color: "#087D97", fontSize: 16, fontWeight: "700" },
+  analyticsTitle: {
+    color: "#1D2530",
+    fontSize: 28,
+    fontWeight: "800",
+    marginTop: 12,
+  },
+  analyticsSubtitle: {
+    color: "#666",
+    fontSize: 16,
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  analyticsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  analyticsCard: {
+    width: "48%",
+    minHeight: 120,
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: "#E2DDD4",
+    borderRadius: 18,
+    padding: 18,
+    justifyContent: "center",
+  },
+  analyticsNumber: { color: "#087D97", fontSize: 31, fontWeight: "800" },
+  analyticsLabel: {
+    color: "#5B6470",
+    fontSize: 15,
+    lineHeight: 20,
+    marginTop: 10,
+  },
+  qualityCard: {
+    backgroundColor: "#E2EFF0",
+    borderWidth: 1,
+    borderColor: "#A9CDD1",
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 20,
+  },
+  qualityTitle: {
+    color: "#1D2530",
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 14,
+  },
+  qualityRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 7,
+  },
+  qualityLabel: { color: "#5B6470", fontSize: 15 },
+  qualityValue: { color: "#1D2530", fontSize: 16, fontWeight: "700" },
   storyCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E7DDD2',
+    borderColor: "#E7DDD2",
     padding: 16,
     marginBottom: 12,
   },
   storyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 6,
   },
   storyTitle: {
     fontSize: 17,
-    fontWeight: '700',
-    color: '#1D2530',
+    fontWeight: "700",
+    color: "#1D2530",
     flex: 1,
     marginRight: 8,
   },
@@ -882,107 +1356,107 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   storyAuthor: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 8,
   },
   storyDescription: {
     fontSize: 15,
-    color: '#555',
+    color: "#555",
     lineHeight: 22,
     marginBottom: 12,
   },
   storyMeta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
     marginBottom: 12,
   },
   metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
   },
   metaText: {
     fontSize: 13,
-    color: '#666',
+    color: "#666",
   },
   actionButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
   },
   actionButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 10,
     borderRadius: 10,
     gap: 6,
   },
   approveButton: {
-    backgroundColor: '#1B8A43',
+    backgroundColor: "#1B8A43",
   },
   rejectButton: {
-    backgroundColor: '#CC0000',
+    backgroundColor: "#CC0000",
   },
   actionButtonText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   emptyState: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: 40,
   },
   emptyStateText: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#1D2530',
+    fontWeight: "700",
+    color: "#1D2530",
     marginTop: 12,
   },
   emptyStateSubtext: {
     fontSize: 15,
-    color: '#666',
+    color: "#666",
     marginTop: 4,
   },
   createCampaignButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#087D97',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#087D97",
     paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
     marginBottom: 16,
   },
   createCampaignText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   campaignCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E7DDD2',
+    borderColor: "#E7DDD2",
     padding: 16,
     marginBottom: 12,
   },
   campaignHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   campaignIconContainer: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#E5F0F3',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#E5F0F3",
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 12,
   },
   campaignInfo: {
@@ -990,12 +1464,12 @@ const styles = StyleSheet.create({
   },
   campaignTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#1D2530',
+    fontWeight: "700",
+    color: "#1D2530",
   },
   campaignDetails: {
     fontSize: 13,
-    color: '#666',
+    color: "#666",
     marginTop: 2,
   },
   campaignStatus: {
@@ -1005,28 +1479,28 @@ const styles = StyleSheet.create({
   },
   campaignStatusText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#1B8A43',
+    fontWeight: "600",
+    color: "#1B8A43",
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     borderRadius: 20,
     padding: 24,
   },
   campaignVolunteerCount: {
-    color: '#087D97',
+    color: "#087D97",
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: 5,
   },
   podcastLink: {
-    color: '#087D97',
+    color: "#087D97",
     fontSize: 12,
     marginTop: 7,
   },
@@ -1035,79 +1509,89 @@ const styles = StyleSheet.create({
     width: 130,
     height: 90,
     borderRadius: 14,
-    backgroundColor: '#E5F0F3',
+    backgroundColor: "#E5F0F3",
   },
   podcastImageGallery: { gap: 10, paddingBottom: 10 },
-  removeImageButton: { position: 'absolute', top: 5, right: 5, width: 25, height: 25, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.72)' },
+  removeImageButton: {
+    position: "absolute",
+    top: 5,
+    right: 5,
+    width: 25,
+    height: 25,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.72)",
+  },
   podcastImageActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 16,
   },
   podcastImageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 7,
     borderWidth: 1,
-    borderColor: '#B9D9DC',
+    borderColor: "#B9D9DC",
     borderRadius: 12,
     paddingHorizontal: 13,
     paddingVertical: 10,
-    backgroundColor: '#F0F8F9',
+    backgroundColor: "#F0F8F9",
   },
-  podcastImageButtonText: { color: '#087D97', fontWeight: '700' },
-  removeImageText: { color: '#B42318', fontWeight: '700' },
+  podcastImageButtonText: { color: "#087D97", fontWeight: "700" },
+  removeImageText: { color: "#B42318", fontWeight: "700" },
   legacyCampaignDetails: {
-    display: 'none',
+    display: "none",
   },
   successModalContent: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   successIcon: {
     width: 84,
     height: 84,
     borderRadius: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1B8A43',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1B8A43",
     marginBottom: 18,
   },
   successTitle: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#1D2530',
-    textAlign: 'center',
+    fontWeight: "800",
+    color: "#1D2530",
+    textAlign: "center",
     marginBottom: 8,
   },
   successMessage: {
     fontSize: 16,
     lineHeight: 23,
-    color: '#5B6470',
-    textAlign: 'center',
+    color: "#5B6470",
+    textAlign: "center",
     marginBottom: 22,
   },
   successButton: {
-    width: '100%',
-    backgroundColor: '#087D97',
+    width: "100%",
+    backgroundColor: "#087D97",
     paddingVertical: 14,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   successButtonText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 20,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#1D2530',
+    fontWeight: "700",
+    color: "#1D2530",
   },
   modalForm: {
     gap: 16,
@@ -1117,48 +1601,48 @@ const styles = StyleSheet.create({
   },
   modalLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#E7DDD2',
+    borderColor: "#E7DDD2",
     borderRadius: 10,
     padding: 12,
     fontSize: 16,
-    color: '#333',
-    backgroundColor: '#FFF',
+    color: "#333",
+    backgroundColor: "#FFF",
   },
   descriptionInput: {
     minHeight: 90,
   },
   modalRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   platformButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
   platformButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F0EDE8',
+    backgroundColor: "#F0EDE8",
   },
   platformButtonActive: {
-    backgroundColor: '#087D97',
+    backgroundColor: "#087D97",
   },
   platformButtonText: {
     fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+    color: "#666",
+    fontWeight: "500",
   },
   platformButtonTextActive: {
-    color: '#FFF',
+    color: "#FFF",
   },
   modalButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginTop: 8,
   },
@@ -1166,22 +1650,22 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   modalCancelButton: {
-    backgroundColor: '#F0EDE8',
+    backgroundColor: "#F0EDE8",
   },
   modalCancelText: {
-    color: '#666',
+    color: "#666",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   modalSaveButton: {
-    backgroundColor: '#087D97',
+    backgroundColor: "#087D97",
   },
   modalSaveText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });
