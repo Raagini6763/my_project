@@ -3,10 +3,12 @@
 -- Configure the bucket itself with a 50 MB file limit and these MIME families:
 -- image/*, video/*, audio/*
 
+drop policy if exists "Allow story media uploads" on storage.objects;
+
 create policy "Allow story media uploads"
 on storage.objects
 for insert
-to anon
+to anon, authenticated
 with check (
   bucket_id = 'sample'
   and (storage.foldername(name))[1] = 'stories'

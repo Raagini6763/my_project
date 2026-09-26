@@ -79,7 +79,7 @@ export default function UploadScreen() {
       const permission = await ImagePicker.requestCameraPermissionsAsync();
       if (permission.granted) {
         const result = await ImagePicker.launchCameraAsync({
-          mediaTypes: formatId === "photos" ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.Videos,
+          mediaTypes: formatId === "photos" ? ['images'] : ['videos'],
           allowsEditing: true,
           quality: 1,
         });

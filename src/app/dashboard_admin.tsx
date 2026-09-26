@@ -291,7 +291,7 @@ export default function DashboardAdminScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsMultipleSelection: true,
       selectionLimit: 10,
       quality: 0.85,
@@ -448,8 +448,8 @@ export default function DashboardAdminScreen() {
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Welcome, {adminName}</Text>
+          <View style={styles.headerCopy}>
+            <Text style={styles.greeting} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>Welcome, {adminName}</Text>
             <Text style={styles.subGreeting}>Manage stories & campaigns</Text>
           </View>
           <View style={styles.headerActions}>
@@ -1190,6 +1190,11 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 20,
   },
+  headerCopy: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 8,
+  },
   greeting: {
     fontSize: 24,
     fontWeight: "800",
@@ -1202,6 +1207,10 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     padding: 8,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerActions: {
     flexDirection: "row",
@@ -1218,6 +1227,7 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
+    minWidth: 0,
     borderRadius: 16,
     padding: 16,
     alignItems: "center",
@@ -1232,6 +1242,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#666",
     marginTop: 2,
+    textAlign: "center",
   },
   tabContainer: {
     flexDirection: "row",
@@ -1386,10 +1397,12 @@ const styles = StyleSheet.create({
   },
   actionButtons: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   actionButton: {
     flex: 1,
+    minWidth: 110,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1525,6 +1538,7 @@ const styles = StyleSheet.create({
   },
   podcastImageActions: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     gap: 16,
   },
